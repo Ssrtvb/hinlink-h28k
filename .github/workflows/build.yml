@@ -3,7 +3,7 @@ name: 每日编译 OPC-H28K
 on:
   schedule:
     # 每天北京时间 11:17 (UTC 03:17)，避开高峰
-    - cron: '17 3 * * *'
+    - cron: '23 21 * * *'
   workflow_dispatch:
 
 permissions:
