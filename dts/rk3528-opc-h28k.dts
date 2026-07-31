@@ -2,6 +2,7 @@
 
 /dts-v1/;
 #include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/leds/common.h>
 #include <dt-bindings/pinctrl/rockchip.h>
 
 #include "rk3528.dtsi"
@@ -13,6 +14,7 @@
 	aliases {
 		mmc0 = &sdhci;
 		mmc1 = &sdmmc;
+		serial0 = &uart0;
 		ethernet0 = &gmac1;
 
 		led-boot = &led_work;
@@ -77,10 +79,10 @@
 
 	vcc3v3_sd: vcc3v3-sd {
 		compatible = "regulator-fixed";
-		gpio = <&gpio4 RK_PA1 GPIO_ACTIVE_LOW>;
+		gpios = <&gpio4 RK_PA1 GPIO_ACTIVE_LOW>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&sdmmc_pwren_l>;
 		regulator-name = "vcc3v3_sd";
-		regulator-always-on;
-		regulator-boot-on;
 		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
 		vin-supply = <&vcc_3v3>;
@@ -89,6 +91,8 @@
 	vccio_sd: vccio-sd {
 		compatible = "regulator-gpio";
 		gpios = <&gpio4 RK_PB6 GPIO_ACTIVE_HIGH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&sdmmc_vol_ctrl_h>;
 		regulator-name = "vccio_sd";
 		regulator-min-microvolt = <1800000>;
 		regulator-max-microvolt = <3300000>;
@@ -101,8 +105,8 @@
 		regulator-name = "vcc_ddr";
 		regulator-always-on;
 		regulator-boot-on;
-		regulator-min-microvolt = <1200000>;
-		regulator-max-microvolt = <1200000>;
+		regulator-min-microvolt = <1100000>;
+		regulator-max-microvolt = <1100000>;
 		vin-supply = <&vcc5v0_sys>;
 	};
 
@@ -121,10 +125,10 @@
 		pwms = <&pwm1 0 5000 1>;
 		pwm-supply = <&vcc5v0_sys>;
 		regulator-name = "vdd_arm";
-		regulator-min-microvolt = <746000>;
-		regulator-max-microvolt = <1201000>;
 		regulator-always-on;
 		regulator-boot-on;
+		regulator-min-microvolt = <746000>;
+		regulator-max-microvolt = <1201000>;
 		regulator-settling-time-up-us = <250>;
 	};
 
@@ -133,10 +137,10 @@
 		pwms = <&pwm2 0 5000 1>;
 		pwm-supply = <&vcc5v0_sys>;
 		regulator-name = "vdd_logic";
-		regulator-min-microvolt = <705000>;
-		regulator-max-microvolt = <1006000>;
 		regulator-always-on;
 		regulator-boot-on;
+		regulator-min-microvolt = <705000>;
+		regulator-max-microvolt = <1006000>;
 		regulator-settling-time-up-us = <250>;
 	};
 };
@@ -163,15 +167,15 @@
 
 &gmac1 {
 	clock_in_out = "output";
-	pinctrl-names = "default";
-	pinctrl-0 = <&rgmii_miim
-		     &rgmii_tx_bus2
-		     &rgmii_rx_bus2
-		     &rgmii_rgmii_clk
-		     &rgmii_rgmii_bus>;
 	phy-handle = <&rgmii_phy>;
 	phy-mode = "rgmii-id";
 	phy-supply = <&vcc_3v3>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&rgmii_miim>,
+		    <&rgmii_tx_bus2>,
+		    <&rgmii_rx_bus2>,
+		    <&rgmii_rgmii_clk>,
+		    <&rgmii_rgmii_bus>;
 	snps,reset-active-low;
 	snps,reset-delays-us = <0 20000 100000>;
 	snps,reset-gpio = <&gpio4 RK_PC2 GPIO_ACTIVE_LOW>;
@@ -184,9 +188,28 @@
 };
 
 &mdio1 {
-	rgmii_phy: phy@1 {
+	rgmii_phy: ethernet-phy@1 {
 		compatible = "ethernet-phy-ieee802.3-c22";
 		reg = <0x1>;
+
+		leds {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			led@1 {
+				reg = <1>;
+				color = <LED_COLOR_ID_GREEN>;
+				function = LED_FUNCTION_LAN;
+				default-state = "keep";
+			};
+
+			led@2 {
+				reg = <2>;
+				color = <LED_COLOR_ID_AMBER>;
+				function = LED_FUNCTION_LAN;
+				default-state = "keep";
+			};
+		};
 	};
 };
 
@@ -194,7 +217,22 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&rtl8111_isolate>;
 	reset-gpios = <&gpio4 RK_PA3 GPIO_ACTIVE_HIGH>;
+	vpcie3v3-supply = <&vcc_3v3>;
 	status = "okay";
+
+	pcie@0,0 {
+		reg = <0x00000000 0 0 0 0>;
+		#address-cells = <3>;
+		#size-cells = <2>;
+		device_type = "pci";
+		ranges;
+
+		rtl8168: pcie-eth@0,0 {
+			compatible = "pci10ec,8168";
+			reg = <0x000000 0 0 0 0>;
+			realtek,led-data = <0x870>;
+		};
+	};
 };
 
 &pinctrl {
@@ -217,13 +255,27 @@
 			rockchip,pins = <4 RK_PA6 RK_FUNC_GPIO &pcfg_pull_up>;
 		};
 	};
+
+	sdmmc {
+		sdmmc_pwren_l: sdmmc-pwren-l {
+			rockchip,pins = <4 RK_PA1 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+
+		sdmmc_vol_ctrl_h: sdmmc-vol-ctrl-h {
+			rockchip,pins = <4 RK_PB6 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+	};
 };
 
 &pwm1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pwm1m0_pins>;
 	status = "okay";
 };
 
 &pwm2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pwm2m0_pins>;
 	status = "okay";
 };
 
@@ -231,13 +283,16 @@
 	status = "okay";
 };
 
+&saradc {
+	vref-supply = <&vcc_1v8>;
+	status = "okay";
+};
+
 &sdhci {
 	bus-width = <8>;
+	cap-mmc-highspeed;
 	mmc-hs200-1_8v;
-	max-frequency = <200000000>;
 	non-removable;
-	pinctrl-names = "default";
-	pinctrl-0 = <&emmc_bus8 &emmc_clk &emmc_cmd &emmc_strb>;
 	vmmc-supply = <&vcc_3v3>;
 	vqmmc-supply = <&vcc_1v8>;
 	status = "okay";
@@ -247,10 +302,6 @@
 	bus-width = <4>;
 	cap-sd-highspeed;
 	disable-wp;
-	max-frequency = <150000000>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&sdmmc_bus4 &sdmmc_clk &sdmmc_cmd &sdmmc_det>;
-	rockchip,default-sample-phase = <90>;
 	sd-uhs-sdr104;
 	vmmc-supply = <&vcc3v3_sd>;
 	vqmmc-supply = <&vccio_sd>;

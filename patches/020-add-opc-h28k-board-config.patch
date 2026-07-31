@@ -14,7 +14,7 @@ index 504164d9d8..b4f046a8b0 100644
  
  board_config_flush
 diff --git a/target/linux/rockchip/armv8/base-files/etc/board.d/02_network b/target/linux/rockchip/armv8/base-files/etc/board.d/02_network
-index 4ef39acc04..988143a6c5 100644
+index 4ef39acc04..1591918969 100644
 --- a/target/linux/rockchip/armv8/base-files/etc/board.d/02_network
 +++ b/target/linux/rockchip/armv8/base-files/etc/board.d/02_network
 @@ -30,6 +30,7 @@ rockchip_setup_interfaces()
@@ -25,3 +25,11 @@ index 4ef39acc04..988143a6c5 100644
  	lunzn,fastrhino-r66s|\
  	mmbox,anas3035|\
  	nlnet,xiguapi-v3|\
+@@ -124,6 +125,7 @@ rockchip_setup_macs()
+ 	friendlyarm,nanopi-r3s|\
+ 	friendlyarm,nanopi-r5c|\
+ 	friendlyarm,nanopi-r6c|\
++	hinlink,opc-h28k|\
+ 	widora,mangopi-m28k|\
+ 	xunlong,orangepi-5-plus)
+ 		wan_mac=$(macaddr_generate_from_mmc_cid mmcblk*)

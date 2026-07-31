@@ -8,11 +8,11 @@
 
 **基于 ImmortalWrt 的 H28K (RK3528) 每日自动编译固件**
 
-[![每日编译](https://github.com/Supremeyyds/immortalwrt-h28k/actions/workflows/build.yml/badge.svg)](https://github.com/Supremeyyds/immortalwrt-h28k/actions/workflows/build.yml)
-[![Latest Release](https://img.shields.io/github/v/release/Supremeyyds/immortalwrt-h28k?label=最新固件&color=brightgreen)](https://github.com/Supremeyyds/immortalwrt-h28k/releases/latest)
-[![下载量](https://img.shields.io/github/downloads/Supremeyyds/immortalwrt-h28k/total?color=blue&label=总下载量)](https://github.com/Supremeyyds/immortalwrt-h28k/releases/latest)
+[![每日编译](https://github.com/Ssrtvb/immortalwrt-h28k/actions/workflows/build.yml/badge.svg)](https://github.com/Ssrtvb/immortalwrt-h28k/actions/workflows/build.yml)
+[![Latest Release](https://img.shields.io/github/v/release/Ssrtvb/immortalwrt-h28k?label=最新固件&color=brightgreen)](https://github.com/Ssrtvb/immortalwrt-h28k/releases/latest)
+[![下载量](https://img.shields.io/github/downloads/Ssrtvb/immortalwrt-h28k/total?color=blue&label=总下载量)](https://github.com/Ssrtvb/immortalwrt-h28k/releases/latest)
 
-[📥 下载固件](https://github.com/Supremeyyds/immortalwrt-h28k/releases/latest) · [🐛 提交问题](https://github.com/Supremeyyds/immortalwrt-h28k/issues) · [📖 ImmortalWrt 官方](https://immortalwrt.org)
+[📥 下载固件](https://github.com/Ssrtvb/immortalwrt-h28k/releases/latest) · [🐛 提交问题](https://github.com/Ssrtvb/immortalwrt-h28k/issues) · [📖 ImmortalWrt 官方](https://immortalwrt.org)
 
 </div>
 
@@ -40,7 +40,7 @@
 
 ## 🔄 自动更新
 
-本仓库每日自动编译，始终跟踪上游最新代码。编译成功后固件会自动上传到 [Releases](https://github.com/Supremeyyds/immortalwrt-h28k/releases/latest)。
+本仓库每日自动编译，始终跟踪上游最新代码。编译成功后固件会自动上传到 [Releases](https://github.com/Ssrtvb/immortalwrt-h28k/releases/latest)。
 
 ## 🙏 致谢
 

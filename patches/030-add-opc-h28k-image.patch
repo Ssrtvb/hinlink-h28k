@@ -1,5 +1,5 @@
 diff --git a/target/linux/rockchip/image/armv8.mk b/target/linux/rockchip/image/armv8.mk
-index 5ca6bf7723..ec41912bc6 100644
+index 5ca6bf7723..6ca4d52492 100644
 --- a/target/linux/rockchip/image/armv8.mk
 +++ b/target/linux/rockchip/image/armv8.mk
 @@ -162,6 +162,15 @@ define Device/firefly_roc-rk3568-pc
@@ -11,7 +11,7 @@ index 5ca6bf7723..ec41912bc6 100644
 +  DEVICE_VENDOR := HINLINK
 +  DEVICE_MODEL := OPC-H28K
 +  UBOOT_DEVICE_NAME := generic-rk3528
-+  DEVICE_PACKAGES := kmod-r8168 -urngd
++  DEVICE_PACKAGES := kmod-r8169
 +endef
 +TARGET_DEVICES += hinlink_opc-h28k
 +
