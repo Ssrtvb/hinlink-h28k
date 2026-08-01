@@ -1,16 +1,19 @@
-name: 每日编译 OPC-H28K
+name: Build HINLINK H28K
 
 on:
-  schedule:
-    - cron: '23 21 * * *'
   workflow_dispatch:
+  push:
+    paths:
+      - ".github/configs/hinlink-h28k.config"
+      - ".github/workflows/build.yml"
+      - "patches/**"
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: build-opc-h28k
-  cancel-in-progress: false
+  group: build-hinlink-h28k-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -18,177 +21,62 @@ jobs:
     timeout-minutes: 360
 
     steps:
-      - name: 检出仓库 (配置和 patch)
+      - name: Check out support repository
         uses: actions/checkout@v4
 
-      - name: 检查磁盘空间
+      - name: Install build dependencies
         run: |
-          echo "=== 初始磁盘状态 ==="
-          df -h /
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential clang flex bison g++ gawk gcc-multilib \
+            gettext git libelf-dev libncurses-dev libssl-dev \
+            python3 python3-dev python3-pyelftools python3-setuptools \
+            rsync swig unzip zlib1g-dev file wget
 
-      - name: 清理不需要的预装软件 (释放空间)
+      - name: Check out ImmortalWrt 25.12
         run: |
-          echo "=== 清理前 ==="
-          df -h / | tail -1
-          sudo rm -rf /usr/share/dotnet 2>/dev/null || true
-          sudo rm -rf /usr/local/lib/android 2>/dev/null || true
-          sudo rm -rf /opt/ghc 2>/dev/null || true
-          sudo rm -rf /opt/hostedtoolcache 2>/dev/null || true
-          sudo rm -rf /usr/local/.ghcup 2>/dev/null || true
-          sudo rm -rf /usr/local/share/powershell 2>/dev/null || true
-          sudo rm -rf /usr/local/share/chromium 2>/dev/null || true
-          sudo rm -rf /usr/share/swift 2>/dev/null || true
-          sudo docker image prune -af 2>/dev/null || true
-          echo "=== 清理后 ==="
-          df -h / | tail -1
-
-      - name: 安装编译依赖
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq build-essential clang flex bison g++ gawk \
-            gcc-multilib g++-multilib gettext git libncurses-dev libssl-dev \
-            python3 python3-dev python3-setuptools python3-pyelftools rsync \
-            unzip zlib1g-dev file wget upx-ucl time
-
-      - name: 克隆上游源码
-        run: |
-          git clone -b openwrt-25.12 --single-branch --depth=1 \
+          git clone --depth 1 --branch openwrt-25.12 --single-branch \
             https://github.com/immortalwrt/immortalwrt.git immortalwrt
-          echo "=== 克隆完成，磁盘状态 ==="
-          df -h / | tail -1
 
-      - name: 应用 OPC-H28K 补丁
+      - name: Apply H28K patches
         working-directory: immortalwrt
         run: |
-          grep -qxF "src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki.git;main" feeds.conf.default || \
-            echo "src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki.git;main" >> feeds.conf.default
-          install -Dm0644 ../dts/rk3528-opc-h28k.dts \
-            target/linux/rockchip/files/arch/arm64/boot/dts/rockchip/rk3528-opc-h28k.dts
-          for patch in ../patches/*.patch; do
-            echo "=== 应用 patch: $patch ==="
-            git apply --check --3way "$patch" || {
-              echo "❌ Patch 检查失败: $patch"
-              git apply --reject "$patch" || true
-              find . -name "*.rej" -print -exec cat {} \;
-              exit 1
-            }
-            git apply --3way "$patch"
+          for patch in "$GITHUB_WORKSPACE"/patches/*.patch; do
+            echo "Applying $(basename "$patch")"
+            git apply --check "$patch"
+            git apply "$patch"
           done
-          echo "✅ Patch 应用成功"
-          git diff --stat
+          git diff --check
 
-      - name: 更新 feeds
+      - name: Update feeds
         working-directory: immortalwrt
         run: |
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
-      - name: 应用编译配置
+      - name: Configure H28K target
         working-directory: immortalwrt
         run: |
-          cp ../.github/configs/opc-h28k.config .config
-          make defconfig 2>&1 || {
-            echo "=== defconfig failed ==="
-            make defconfig V=sc
-            exit 1
-          }
-          echo ""
-          echo "=== 目标设备 ==="
-          grep "CONFIG_TARGET_rockchip_armv8_DEVICE" .config | grep "=y"
+          cp "$GITHUB_WORKSPACE/.github/configs/hinlink-h28k.config" .config
+          make defconfig
+          grep -q '^CONFIG_TARGET_rockchip_armv8_DEVICE_hinlink_h28k=y$' .config
 
-      - name: 下载源码包
-        working-directory: immortalwrt
-        timeout-minutes: 90
-        run: |
-          make -j$(nproc) download V=s
-          find dl -size -1024c -print -delete
-          echo "=== 下载完成，磁盘状态 ==="
-          df -h / | tail -1
-
-      - name: 编译
-        working-directory: immortalwrt
-        timeout-minutes: 300
-        run: |
-          echo "=== 开始编译 $(date) ==="
-          make -j$(nproc) V=s 2>&1 | tee build.log
-          code=${PIPESTATUS[0]}
-          echo "exit code: $code"
-          echo "=== 编译完成 $(date), 退出码: $code ==="
-          echo ""
-          echo "=== 磁盘状态 ==="
-          df -h / | tail -1
-          if [ $code -ne 0 ]; then
-            echo "编译过程出错 (exit code: $code)"
-            tail -100 build.log
-            exit $code
-          fi
-
-      - name: 检查产物
+      - name: Download sources
         working-directory: immortalwrt
         run: |
-          FIRMWARE="bin/targets/rockchip/armv8/immortalwrt-rockchip-armv8-hinlink_opc-h28k-squashfs-sysupgrade.img.gz"
-          if [ ! -f "$FIRMWARE" ]; then
-            echo "❌ 固件文件不存在: $FIRMWARE"
-            echo "=== 目录内容 ==="
-            ls -lh bin/targets/rockchip/armv8/ 2>/dev/null || echo "目录为空"
-            exit 1
-          fi
-          sha256sum "$FIRMWARE" | tee "$FIRMWARE.sha256sum"
-          ls -lh "$FIRMWARE" "$FIRMWARE.sha256sum"
-          echo "FIRMWARE_PATH=$FIRMWARE" >> $GITHUB_ENV
-          echo "FIRMWARE_NAME=$(basename $FIRMWARE)" >> $GITHUB_ENV
-          echo "BUILD_DATE=$(TZ=Asia/Shanghai date +'%Y%m%d')" >> $GITHUB_ENV
-          echo "UPSTREAM_HASH=$(git log -1 --format='%h')" >> $GITHUB_ENV
+          make -j"$(nproc)" download || make -j1 download V=s
+          find dl -type f -size -1024c -delete
 
-      - name: 上传固件到 Artifacts
+      - name: Build firmware
+        working-directory: immortalwrt
+        run: make -j"$(nproc)"
+
+      - name: Upload firmware
         uses: actions/upload-artifact@v4
         with:
-          name: immortalwrt-rockchip-armv8-hinlink_opc-h28k-squashfs-sysupgrade
+          name: immortalwrt-25.12-hinlink-h28k
           path: |
-            immortalwrt/${{ env.FIRMWARE_PATH }}
-            immortalwrt/${{ env.FIRMWARE_PATH }}.sha256sum
+            immortalwrt/bin/targets/rockchip/armv8/*hinlink_h28k*
+            immortalwrt/bin/targets/rockchip/armv8/sha256sums
+          if-no-files-found: error
           retention-days: 7
-
-      - name: 上传固件到 Releases
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: h28k-${{ env.BUILD_DATE }}
-          name: "H28K 固件 ${{ env.BUILD_DATE }}"
-          body: |
-            ## H28K 每日自动编译固件
-
-            - **编译日期**: ${{ env.BUILD_DATE }}
-            - **上游版本**: immortalwrt/openwrt-25.12 (${{ env.UPSTREAM_HASH }})
-            - **设备**: H28K (RK3528)
-            - **固件**: ${{ env.FIRMWARE_NAME }}
-            - **校验**: `${{ env.FIRMWARE_NAME }}.sha256sum`
-
-            > 每日编译会创建独立 Release，便于保留历史版本。
-          files: |
-            immortalwrt/${{ env.FIRMWARE_PATH }}
-            immortalwrt/${{ env.FIRMWARE_PATH }}.sha256sum
-          make_latest: true
-          fail_on_unmatched_files: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: 上传编译日志 (仅失败时)
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-log-failed
-          path: immortalwrt/build.log
-          retention-days: 7
-
-      - name: 结果通知
-        if: always()
-        run: |
-          if [ "${{ job.status }}" == "success" ]; then
-            echo "✅ OPC-H28K 编译成功！"
-            echo "固件下载: https://github.com/${{ github.repository }}/releases/tag/h28k-${{ env.BUILD_DATE }}"
-          elif [ "${{ job.status }}" == "failure" ]; then
-            echo "❌ 编译失败，请检查上方日志"
-            echo "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          else
-            echo "⚠️ 编译状态: ${{ job.status }}"
-          fi

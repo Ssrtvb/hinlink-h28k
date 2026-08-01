@@ -1,57 +1,66 @@
-<div align="center">
+# ImmortalWrt 25.12 HINLINK H28K support
 
-<img src="https://img.shields.io/badge/ImmortalWrt-25.12-blue?style=for-the-badge&logo=openwrt" alt="ImmortalWrt">
-<img src="https://img.shields.io/badge/SoC-RK3528-orange?style=for-the-badge&logo=arm" alt="RK3528">
-<img src="https://img.shields.io/badge/Arch-ARMv8--aarch64-green?style=for-the-badge" alt="ARMv8">
+This repository carries out-of-tree HINLINK H28K support for the
+`openwrt-25.12` branch of ImmortalWrt. The implementation follows the
+existing ImmortalWrt Rockchip layout and is delivered as repository-level
+patches intended for `git apply`.
 
-# H28K
+The H28K hardware description is maintained as local ImmortalWrt Rockchip
+source files, matching the layout used by devices such as MangoPi M28K.
 
-**基于 ImmortalWrt 的 H28K (RK3528) 每日自动编译固件**
+## Patch layout
 
-[![每日编译](https://github.com/Ssrtvb/immortalwrt-h28k/actions/workflows/build.yml/badge.svg)](https://github.com/Ssrtvb/immortalwrt-h28k/actions/workflows/build.yml)
-[![Latest Release](https://img.shields.io/github/v/release/Ssrtvb/immortalwrt-h28k?label=最新固件&color=brightgreen)](https://github.com/Ssrtvb/immortalwrt-h28k/releases/latest)
-[![下载量](https://img.shields.io/github/downloads/Ssrtvb/immortalwrt-h28k/total?color=blue&label=总下载量)](https://github.com/Ssrtvb/immortalwrt-h28k/releases/latest)
+| Patch | Purpose |
+| --- | --- |
+| `0010-rockchip-add-HINLINK-H28K-U-Boot-support.patch` | Adds the U-Boot target and locally maintained DTS, U-Boot DTSI, and defconfig under `uboot-rockchip/src`. |
+| `0020-rockchip-add-HINLINK-H28K-device-tree.patch` | Adds the locally maintained Linux DTS under `target/linux/rockchip/files`, including system LED aliases. |
+| `0030-rockchip-add-HINLINK-H28K-board-defaults.patch` | Adds LED defaults, LAN/WAN assignment, deterministic MAC generation, and IRQ affinity. |
+| `0040-rockchip-add-HINLINK-H28K-image.patch` | Adds the `hinlink_h28k` image profile and required kernel packages. |
+| `0050-rockchip-configure-HINLINK-H28K-RJ45-LEDs.patch` | Configures both RJ45 ports to use green for link and amber for activity. |
 
-[📥 下载固件](https://github.com/Ssrtvb/immortalwrt-h28k/releases/latest) · [🐛 提交问题](https://github.com/Ssrtvb/immortalwrt-h28k/issues) · [📖 ImmortalWrt 官方](https://immortalwrt.org)
+## Apply
 
-</div>
+```sh
+git clone --branch openwrt-25.12 --single-branch \
+  https://github.com/immortalwrt/immortalwrt.git
+cd immortalwrt
 
----
+for patch in /path/to/immh28k/patches/*.patch; do
+  git apply --check "$patch"
+  git apply "$patch"
+done
+```
 
-> **声明：本项目仅供个人使用，不对外提供任何形式的技术支持或服务。**
+To select only this device, use the supplied seed configuration:
 
-## 📋 设备信息
+```sh
+cp /path/to/immh28k/.github/configs/hinlink-h28k.config .config
+make defconfig
+make -j"$(nproc)" download
+make -j"$(nproc)"
+```
 
-| 项目 | 说明 |
-|------|------|
-| **设备型号** | H28K |
-| **处理器** | 瑞芯微 RK3528 (四核 Cortex-A53) |
-| **架构** | ARMv8 / AArch64 |
-| **固件格式** | squashfs-sysupgrade |
-| **上游分支** | [immortalwrt/openwrt-25.12](https://github.com/immortalwrt/immortalwrt/tree/openwrt-25.12) |
+The expected image name starts with
+`immortalwrt-rockchip-armv8-hinlink_h28k-`.
 
-## 📦 默认配置
+## Validation
 
-- 默认 IP：`192.168.1.1`
-- 默认密码：无（首次登录请设置）
-- 管理界面：LuCI (HTTP/HTTPS)
-- 包管理器：apk
-- 内置 nikki 代理插件
+The patch set was validated on a 24-core Debian 11 build host against
+ImmortalWrt commit `1cfeb3edade40fe2dfec59c21381de1d8e361100`.
 
-## 🔄 自动更新
+- `make -j1 target/linux/compile V=s`: passed with Linux 6.12.94.
+- `make -j24`: passed, including U-Boot 2025.10 and final image generation.
+- Linux H28K DTB: generated successfully.
+- U-Boot H28K DTB and `hinlink-h28k-rk3528-u-boot-rockchip.bin`: generated successfully.
+- Firmware: `immortalwrt-rockchip-armv8-hinlink_h28k-squashfs-sysupgrade.img.gz`.
 
-本仓库每日自动编译，始终跟踪上游最新代码。编译成功后固件会自动上传到 [Releases](https://github.com/Ssrtvb/immortalwrt-h28k/releases/latest)。
+## Implementation notes
 
-## 🙏 致谢
-
-- [ImmortalWrt](https://github.com/immortalwrt/immortalwrt) — 上游项目
-- [OpenWrt](https://openwrt.org) — 基础框架
-- [nikki](https://github.com/nikkinikki-org/OpenWrt-nikki) — 代理插件
-
----
-
-<div align="center">
-
-**本项目仅供个人使用**
-
-</div>
+- Linux DTS support stays in `target/linux/rockchip/files`, matching
+  ImmortalWrt's locally maintained MangoPi M28 device family.
+- U-Boot DTS and defconfig files stay in `package/boot/uboot-rockchip/src`,
+  while the target selection is registered in the package Makefile.
+- The ADC boot button explicitly pulls in both `kmod-input-adc-keys` and
+  ImmortalWrt's modular `kmod-saradc-rockchip` driver.
+- The board uses `eth0` as LAN and `eth1` as WAN, matching the official DTS
+  enumeration and OpenWrt board defaults.
