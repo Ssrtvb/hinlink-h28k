@@ -33,13 +33,13 @@ jobs:
             python3 python3-dev python3-pyelftools python3-setuptools \
             rsync swig unzip zlib1g-dev file wget
 
-      - name: Check out ImmortalWrt 25.12
+      - name: Check out upstream 25.12 source
         run: |
           git clone --depth 1 --branch openwrt-25.12 --single-branch \
-            https://github.com/immortalwrt/immortalwrt.git immortalwrt
+            https://github.com/immortalwrt/immortalwrt.git source
 
       - name: Apply H28K patches
-        working-directory: immortalwrt
+        working-directory: source
         run: |
           for patch in "$GITHUB_WORKSPACE"/patches/*.patch; do
             echo "Applying $(basename "$patch")"
@@ -49,34 +49,34 @@ jobs:
           git diff --check
 
       - name: Update feeds
-        working-directory: immortalwrt
+        working-directory: source
         run: |
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
       - name: Configure H28K target
-        working-directory: immortalwrt
+        working-directory: source
         run: |
           cp "$GITHUB_WORKSPACE/.github/configs/hinlink-h28k.config" .config
           make defconfig
           grep -q '^CONFIG_TARGET_rockchip_armv8_DEVICE_hinlink_h28k=y$' .config
 
       - name: Download sources
-        working-directory: immortalwrt
+        working-directory: source
         run: |
           make -j"$(nproc)" download || make -j1 download V=s
           find dl -type f -size -1024c -delete
 
       - name: Build firmware
-        working-directory: immortalwrt
+        working-directory: source
         run: make -j"$(nproc)"
 
       - name: Upload firmware
         uses: actions/upload-artifact@v4
         with:
-          name: immortalwrt-25.12-hinlink-h28k
+          name: hinlink-h28k-25.12
           path: |
-            immortalwrt/bin/targets/rockchip/armv8/*hinlink_h28k*
-            immortalwrt/bin/targets/rockchip/armv8/sha256sums
+            source/bin/targets/rockchip/armv8/*hinlink_h28k*
+            source/bin/targets/rockchip/armv8/sha256sums
           if-no-files-found: error
           retention-days: 7
