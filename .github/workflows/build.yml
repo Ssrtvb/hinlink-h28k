@@ -84,6 +84,8 @@ jobs:
         working-directory: source
         run: |
           set -eu
+          grep -qxF "src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki.git;main" feeds.conf.default || \
+            echo "src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki.git;main" >> feeds.conf.default
           for patch in "$GITHUB_WORKSPACE"/patches/*.patch; do
             echo "=== Applying patch: $(basename "$patch") ==="
             git apply --check --3way "$patch" || {
@@ -97,15 +99,10 @@ jobs:
           git diff --check
           git diff --stat
 
-      - name: 固定正式版 feeds
+      - name: 更新 feeds
         working-directory: source
-        env:
-          RELEASE_VERSION: ${{ steps.release.outputs.version }}
         run: |
           set -eu
-          BUILDINFO_URL="https://downloads.immortalwrt.org/releases/${RELEASE_VERSION}/targets/rockchip/armv8"
-          curl -fsSL "$BUILDINFO_URL/feeds.buildinfo" -o feeds.conf.default
-          echo "src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki.git;main" >> feeds.conf.default
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
