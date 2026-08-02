@@ -147,6 +147,8 @@ jobs:
           grep -q '^CONFIG_TARGET_rockchip_armv8_DEVICE_hinlink_h28k=y$' .config
           grep -q '^CONFIG_ALL_KMODS=y$' .config
           grep -q '^CONFIG_ALL_NONSHARED=y$' .config
+          grep -q '^CONFIG_TARGET_ROOTFS_EXT4FS=y$' .config
+          grep -q '^CONFIG_TARGET_ROOTFS_SQUASHFS=y$' .config
 
       - name: 下载源码包
         working-directory: source
@@ -212,17 +214,23 @@ jobs:
         env:
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
         run: |
-          FIRMWARE="$(find bin/targets/rockchip/armv8 -maxdepth 1 -type f \
+          SQUASHFS_FIRMWARE="$(find bin/targets/rockchip/armv8 -maxdepth 1 -type f \
             -name '*hinlink_h28k*squashfs-sysupgrade.img.gz' -print -quit)"
-          if [ -z "$FIRMWARE" ] || [ ! -f "$FIRMWARE" ]; then
-            echo "Firmware file not found"
+          EXT4_FIRMWARE="$(find bin/targets/rockchip/armv8 -maxdepth 1 -type f \
+            -name '*hinlink_h28k*ext4-sysupgrade.img.gz' -print -quit)"
+          if [ -z "$SQUASHFS_FIRMWARE" ] || [ ! -f "$SQUASHFS_FIRMWARE" ]; then
+            echo "SquashFS firmware file not found"
             ls -lh bin/targets/rockchip/armv8/ 2>/dev/null || true
             exit 1
           fi
-          sha256sum "$FIRMWARE" | tee "$FIRMWARE.sha256sum"
-          ls -lh "$FIRMWARE" "$FIRMWARE.sha256sum" abi-report.txt
-          echo "FIRMWARE_PATH=$FIRMWARE" >> "$GITHUB_ENV"
-          echo "FIRMWARE_NAME=$(basename "$FIRMWARE")" >> "$GITHUB_ENV"
+          if [ -z "$EXT4_FIRMWARE" ] || [ ! -f "$EXT4_FIRMWARE" ]; then
+            echo "ext4 firmware file not found"
+            ls -lh bin/targets/rockchip/armv8/ 2>/dev/null || true
+            exit 1
+          fi
+          CHECKSUM_FILE="bin/targets/rockchip/armv8/hinlink_h28k.sha256sums"
+          sha256sum "$SQUASHFS_FIRMWARE" "$EXT4_FIRMWARE" | tee "$CHECKSUM_FILE"
+          ls -lh "$SQUASHFS_FIRMWARE" "$EXT4_FIRMWARE" "$CHECKSUM_FILE" abi-report.txt
           echo "BUILD_DATE=$(TZ=Asia/Hong_Kong date +'%Y%m%d')" >> "$GITHUB_ENV"
           echo "UPSTREAM_HASH=$(git log -1 --format='%h')" >> "$GITHUB_ENV"
           echo "RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
@@ -232,8 +240,9 @@ jobs:
         with:
           name: HINLINK H28K 固件-${{ env.RELEASE_TAG }}
           path: |
-            source/${{ env.FIRMWARE_PATH }}
-            source/${{ env.FIRMWARE_PATH }}.sha256sum
+            source/bin/targets/rockchip/armv8/*hinlink_h28k*ext4-sysupgrade.img.gz
+            source/bin/targets/rockchip/armv8/*hinlink_h28k*squashfs-sysupgrade.img.gz
+            source/bin/targets/rockchip/armv8/hinlink_h28k.sha256sums
             source/abi-report.txt
           retention-days: 30
 
@@ -248,11 +257,12 @@ jobs:
             - **Build date**: ${{ env.BUILD_DATE }}
             - **Upstream release**: ${{ env.RELEASE_TAG }} (${{ env.UPSTREAM_HASH }})
             - **Device**: HINLINK H28K (RK3528)
-            - **Firmware**: ${{ env.FIRMWARE_NAME }}
+            - **Firmware**: ext4 and squashfs sysupgrade images
             - **Kernel ABI**: verified against the official release repository
           files: |
-            source/${{ env.FIRMWARE_PATH }}
-            source/${{ env.FIRMWARE_PATH }}.sha256sum
+            source/bin/targets/rockchip/armv8/*hinlink_h28k*ext4-sysupgrade.img.gz
+            source/bin/targets/rockchip/armv8/*hinlink_h28k*squashfs-sysupgrade.img.gz
+            source/bin/targets/rockchip/armv8/hinlink_h28k.sha256sums
             source/abi-report.txt
           make_latest: true
           fail_on_unmatched_files: true
