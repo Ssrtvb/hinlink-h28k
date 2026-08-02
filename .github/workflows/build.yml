@@ -188,6 +188,8 @@ jobs:
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
         run: |
           set -eu
+          make -j"$(nproc)" tools/install V=s
+          make -j"$(nproc)" toolchain/install V=s
           make -j"$(nproc)" target/linux/compile V=s
 
           PACKAGE_INDEX="https://downloads.immortalwrt.org/releases/${RELEASE_VERSION}/targets/rockchip/armv8/packages/index.json"
