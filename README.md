@@ -1,7 +1,6 @@
-# HINLINK H28K 支持
+# HINLINK H28K 固件
 
-本仓库为 ImmortalWrt 正式版 Rockchip 源码提供 HINLINK H28K
-（RK3528）设备支持，内容以可直接使用 `git apply` 的补丁形式提供。
+本仓库用于每周自动编译 ImmortalWrt HINLINK H28K 固件（RK3528），并提供构建所需的补丁和配置。
 
 ## 补丁说明
 
@@ -56,10 +55,3 @@ make -j"$(nproc)"
 - LAN：`eth0`
 - WAN：`eth1`
 - 固件设备名：`hinlink_h28k`
-
-## 实现说明
-
-- Linux DTS 位于 `target/linux/rockchip/files`。
-- U-Boot DTS 和 defconfig 位于 `package/boot/uboot-rockchip/src`。
-- ADC 启动按键使用 ADC keys 和 Rockchip SARADC 驱动。
-- RJ45 LED 由板级配置和 PHY LED 初始化脚本共同配置。
