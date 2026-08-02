@@ -116,19 +116,10 @@ jobs:
           curl -fsSL "$BUILDINFO_URL/config.buildinfo" -o .config.official
 
           sed -i -E \
-            -e '/^CONFIG_TARGET_MULTI_PROFILE=/d' \
-            -e '/^CONFIG_TARGET_ALL_PROFILES=/d' \
-            -e '/^CONFIG_TARGET_PER_DEVICE_ROOTFS=/d' \
             -e '/^CONFIG_TARGET_DEVICE_rockchip_armv8_DEVICE_/d' \
             -e '/^CONFIG_TARGET_DEVICE_PACKAGES_rockchip_armv8_DEVICE_/d' \
             -e '/^CONFIG_TARGET_rockchip_armv8_DEVICE_/d' \
             .config.official
-
-          cat >> .config.official <<'EOF'
-          # CONFIG_TARGET_MULTI_PROFILE is not set
-          # CONFIG_TARGET_ALL_PROFILES is not set
-          # CONFIG_TARGET_PER_DEVICE_ROOTFS is not set
-          EOF
 
           CUSTOM_CONFIG="$GITHUB_WORKSPACE/.github/configs/hinlink-h28k.config"
           awk '
