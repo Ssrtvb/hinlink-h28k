@@ -113,7 +113,7 @@ jobs:
         run: |
           set -eu
           BUILDINFO_URL="https://downloads.immortalwrt.org/releases/${RELEASE_VERSION}/targets/rockchip/armv8"
-          curl -fsSL "$BUILDINFO_URL/config.buildinfo" -o .config
+          curl -fsSL "$BUILDINFO_URL/config.buildinfo" -o .config.official
 
           sed -i -E \
             -e '/^CONFIG_TARGET_MULTI_PROFILE=/d' \
@@ -122,20 +122,42 @@ jobs:
             -e '/^CONFIG_TARGET_DEVICE_rockchip_armv8_DEVICE_/d' \
             -e '/^CONFIG_TARGET_DEVICE_PACKAGES_rockchip_armv8_DEVICE_/d' \
             -e '/^CONFIG_TARGET_rockchip_armv8_DEVICE_/d' \
-            -e '/^CONFIG_TARGET_KERNEL_PARTSIZE=/d' \
-            -e '/^CONFIG_TARGET_ROOTFS_PARTSIZE=/d' \
-            -e '/^CONFIG_PACKAGE_luci-app-nikki=/d' \
-            -e '/^CONFIG_PACKAGE_luci-app-argon-config=/d' \
-            -e '/^CONFIG_PACKAGE_kmod-mt7921u=/d' \
-            -e '/^CONFIG_PACKAGE_openssh-sftp-server=/d' \
-            .config
+            .config.official
 
-          cat >> .config <<'EOF'
+          cat >> .config.official <<'EOF'
           # CONFIG_TARGET_MULTI_PROFILE is not set
           # CONFIG_TARGET_ALL_PROFILES is not set
           # CONFIG_TARGET_PER_DEVICE_ROOTFS is not set
           EOF
-          cat "$GITHUB_WORKSPACE/.github/configs/hinlink-h28k.config" >> .config
+
+          CUSTOM_CONFIG="$GITHUB_WORKSPACE/.github/configs/hinlink-h28k.config"
+          awk '
+            function config_key(line, parts) {
+              if (line ~ /^CONFIG_[A-Za-z0-9_-]+=/) {
+                split(line, parts, "=")
+                return parts[1]
+              }
+              if (line ~ /^# CONFIG_[A-Za-z0-9_-]+ is not set$/) {
+                sub(/^# /, "", line)
+                sub(/ is not set$/, "", line)
+                return line
+              }
+              return ""
+            }
+            NR == FNR {
+              key = config_key($0)
+              if (key != "") overrides[key] = 1
+              custom[++count] = $0
+              next
+            }
+            {
+              key = config_key($0)
+              if (key == "" || !(key in overrides)) print
+            }
+            END {
+              for (i = 1; i <= count; i++) print custom[i]
+            }
+          ' "$CUSTOM_CONFIG" .config.official > .config
           make defconfig 2>&1 || {
             echo "=== defconfig failed ==="
             make defconfig V=sc
