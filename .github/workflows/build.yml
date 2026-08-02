@@ -127,33 +127,7 @@ jobs:
           grep -q '^CONFIG_DEVEL=y$' .config.official
 
           CUSTOM_CONFIG="$GITHUB_WORKSPACE/.github/configs/hinlink-h28k.config"
-          awk '
-            function config_key(line, parts) {
-              if (line ~ /^CONFIG_[A-Za-z0-9_-]+=/) {
-                split(line, parts, "=")
-                return parts[1]
-              }
-              if (line ~ /^# CONFIG_[A-Za-z0-9_-]+ is not set$/) {
-                sub(/^# /, "", line)
-                sub(/ is not set$/, "", line)
-                return line
-              }
-              return ""
-            }
-            NR == FNR {
-              key = config_key($0)
-              if (key != "") overrides[key] = 1
-              custom[++count] = $0
-              next
-            }
-            {
-              key = config_key($0)
-              if (key == "" || !(key in overrides)) print
-            }
-            END {
-              for (i = 1; i <= count; i++) print custom[i]
-            }
-          ' "$CUSTOM_CONFIG" .config.official > .config
+          cat .config.official "$CUSTOM_CONFIG" > .config
           make defconfig 2>&1 || {
             echo "=== defconfig failed ==="
             make defconfig V=sc
