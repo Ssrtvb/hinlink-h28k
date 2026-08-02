@@ -17,9 +17,16 @@
 GitHub Actions 每周自动运行一次，也可以在 Actions 页面手动触发。每次构建会：
 
 1. 自动选择 ImmortalWrt 最新正式版 `vX.Y.Z` 标签。
-2. 使用对应版本的 `feeds.buildinfo` 和 `config.buildinfo`。
+2. 使用对应正式版的官方 `config.buildinfo`。
 3. 应用 HINLINK H28K 补丁。
 4. 编译完整固件并上传到 Artifacts 和 Releases。
+
+## 默认包含
+
+- Argon 配置插件：`luci-app-argon-config`
+- Nikki：`luci-app-nikki`
+- MT7921U USB 无线网卡驱动：`kmod-mt7921u`
+- OpenSSH SFTP 服务：`openssh-sftp-server`
 
 ## 手动应用补丁
 
@@ -35,17 +42,6 @@ for patch in /path/to/hinlink-h28k/patches/*.patch; do
   git apply "$patch"
 done
 ```
-
-使用仓库提供的最小配置：
-
-```sh
-cp /path/to/hinlink-h28k/.github/configs/hinlink-h28k.config .config
-make defconfig
-make -j"$(nproc)" download
-make -j"$(nproc)"
-```
-
-`make defconfig` 会根据官方配置自动补齐软件包和内核模块依赖。
 
 ## 设备信息
 
