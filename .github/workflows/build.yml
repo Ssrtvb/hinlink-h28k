@@ -202,20 +202,19 @@ jobs:
           test -n "$VERMAGIC_FILE"
           BUILT_ABI="$(tr -d '[:space:]' < "$VERMAGIC_FILE")"
 
-          {
-            echo "release=$RELEASE_TAG"
-            echo "source_commit=$(git rev-parse HEAD)"
-            echo "official_kernel=$OFFICIAL_KERNEL"
-            echo "official_abi=$OFFICIAL_ABI"
-            echo "built_vermagic_file=$VERMAGIC_FILE"
-            echo "built_abi=$BUILT_ABI"
-          } | tee abi-report.txt
+          echo "release=$RELEASE_TAG"
+          echo "source_commit=$(git rev-parse HEAD)"
+          echo "official_kernel=$OFFICIAL_KERNEL"
+          echo "official_abi=$OFFICIAL_ABI"
+          echo "built_vermagic_file=$VERMAGIC_FILE"
+          echo "built_abi=$BUILT_ABI"
 
           if [ "$BUILT_ABI" != "$OFFICIAL_ABI" ]; then
             echo "Kernel ABI mismatch"
             exit 1
           fi
           echo "Kernel ABI matches the official release"
+          echo "KERNEL_ABI=$BUILT_ABI" >> "$GITHUB_ENV"
 
       - name: 编译固件
         working-directory: source
@@ -252,9 +251,7 @@ jobs:
             ls -lh bin/targets/rockchip/armv8/ 2>/dev/null || true
             exit 1
           fi
-          CHECKSUM_FILE="bin/targets/rockchip/armv8/hinlink_h28k.sha256sums"
-          sha256sum "$SQUASHFS_FIRMWARE" "$EXT4_FIRMWARE" | tee "$CHECKSUM_FILE"
-          ls -lh "$SQUASHFS_FIRMWARE" "$EXT4_FIRMWARE" "$CHECKSUM_FILE" abi-report.txt
+          ls -lh "$SQUASHFS_FIRMWARE" "$EXT4_FIRMWARE"
           echo "BUILD_DATE=$(TZ=Asia/Hong_Kong date +'%Y%m%d')" >> "$GITHUB_ENV"
           echo "UPSTREAM_HASH=$(git log -1 --format='%h')" >> "$GITHUB_ENV"
           echo "RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
@@ -266,8 +263,6 @@ jobs:
           path: |
             source/bin/targets/rockchip/armv8/*hinlink_h28k*ext4-sysupgrade.img.gz
             source/bin/targets/rockchip/armv8/*hinlink_h28k*squashfs-sysupgrade.img.gz
-            source/bin/targets/rockchip/armv8/hinlink_h28k.sha256sums
-            source/abi-report.txt
           retention-days: 30
 
       - name: 发布固件 Release
@@ -282,12 +277,10 @@ jobs:
             - **Upstream release**: ${{ env.RELEASE_TAG }} (${{ env.UPSTREAM_HASH }})
             - **Device**: HINLINK H28K (RK3528)
             - **Firmware**: ext4 and squashfs sysupgrade images
-            - **Kernel ABI**: verified against the official release repository
+            - **Kernel ABI**: `${{ env.KERNEL_ABI }}`
           files: |
             source/bin/targets/rockchip/armv8/*hinlink_h28k*ext4-sysupgrade.img.gz
             source/bin/targets/rockchip/armv8/*hinlink_h28k*squashfs-sysupgrade.img.gz
-            source/bin/targets/rockchip/armv8/hinlink_h28k.sha256sums
-            source/abi-report.txt
           make_latest: true
           fail_on_unmatched_files: true
         env:
@@ -298,9 +291,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: 编译失败日志
-          path: |
-            source/build.log
-            source/abi-report.txt
+          path: source/build.log
           if-no-files-found: ignore
           retention-days: 7
 
