@@ -1,4 +1,4 @@
-name: Weekly HINLINK H28K build
+name: 每周自动编译 HINLINK H28K 固件
 
 on:
   schedule:
