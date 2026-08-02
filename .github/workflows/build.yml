@@ -4,6 +4,12 @@ on:
   schedule:
     - cron: '23 21 * * 0'
   workflow_dispatch:
+    inputs:
+      use_cache:
+        description: 使用 GitHub Actions 源码缓存
+        required: true
+        default: true
+        type: boolean
 
 permissions:
   contents: write
@@ -146,14 +152,33 @@ jobs:
           grep -q '^CONFIG_TARGET_ROOTFS_EXT4FS=y$' .config
           grep -q '^CONFIG_TARGET_ROOTFS_SQUASHFS=y$' .config
 
+      - name: 恢复源码缓存
+        id: source-cache
+        if: ${{ github.event_name == 'schedule' || inputs.use_cache }}
+        uses: actions/cache/restore@v4
+        with:
+          path: source/dl
+          key: immortalwrt-dl-${{ runner.os }}-${{ steps.release.outputs.version }}-${{ github.sha }}
+          restore-keys: |
+            immortalwrt-dl-${{ runner.os }}-${{ steps.release.outputs.version }}-
+            immortalwrt-dl-${{ runner.os }}-
+
       - name: 下载源码包
         working-directory: source
         timeout-minutes: 90
         run: |
           make -j"$(nproc)" download V=s
           find dl -size -1024c -print -delete
+          du -sh dl
           echo "=== Download completed, disk space ==="
           df -h / | tail -1
+
+      - name: 保存源码缓存
+        if: ${{ (github.event_name == 'schedule' || inputs.use_cache) && steps.source-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: source/dl
+          key: immortalwrt-dl-${{ runner.os }}-${{ steps.release.outputs.version }}-${{ github.sha }}
 
       - name: 编译固件
         working-directory: source
