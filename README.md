@@ -1,6 +1,6 @@
 # HINLINK H28K 固件
 
-本仓库用于每周自动编译 ImmortalWrt HINLINK H28K 固件（RK3528），并提供构建所需的补丁和配置。
+本仓库用于每周自动编译 ImmortalWrt HINLINK H28K 固件（RK3528）。
 
 ## 补丁说明
 
