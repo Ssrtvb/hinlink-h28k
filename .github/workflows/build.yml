@@ -106,29 +106,25 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
-      - name: 使用官方编译配置
+      - name: 提取官方内核配置
         working-directory: source
         env:
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
         run: |
           set -eu
           BUILDINFO_URL="https://downloads.immortalwrt.org/releases/${RELEASE_VERSION}/targets/rockchip/armv8"
-          curl -fsSL "$BUILDINFO_URL/config.buildinfo" -o .config.official
+          curl -fsSL "$BUILDINFO_URL/config.buildinfo" -o .config.buildinfo
 
-          sed -i -E \
-            -e '/^CONFIG_TARGET_MULTI_PROFILE=/d' \
-            -e '/^CONFIG_TARGET_ALL_PROFILES=/d' \
-            -e '/^CONFIG_TARGET_PER_DEVICE_ROOTFS=/d' \
-            -e '/^CONFIG_TARGET_DEVICE_rockchip_armv8_DEVICE_/d' \
-            -e '/^CONFIG_TARGET_DEVICE_PACKAGES_rockchip_armv8_DEVICE_/d' \
-            -e '/^CONFIG_TARGET_rockchip_armv8_DEVICE_/d' \
-            .config.official
+          awk '
+            /^CONFIG_ALL_KMODS=y$/ ||
+            /^CONFIG_DEVEL=y$/ ||
+            (/^CONFIG_KERNEL_[A-Za-z0-9_]+=/ &&
+              $0 !~ /^CONFIG_KERNEL_BUILD_(DOMAIN|USER)=/) ||
+            /^# CONFIG_KERNEL_[A-Za-z0-9_]+ is not set$/
+          ' .config.buildinfo > .config.official
 
-          cat >> .config.official <<'EOF'
-          # CONFIG_TARGET_MULTI_PROFILE is not set
-          # CONFIG_TARGET_ALL_PROFILES is not set
-          # CONFIG_TARGET_PER_DEVICE_ROOTFS is not set
-          EOF
+          grep -q '^CONFIG_ALL_KMODS=y$' .config.official
+          grep -q '^CONFIG_DEVEL=y$' .config.official
 
           CUSTOM_CONFIG="$GITHUB_WORKSPACE/.github/configs/hinlink-h28k.config"
           awk '
@@ -167,8 +163,12 @@ jobs:
           echo "=== Target device ==="
           grep '^CONFIG_TARGET_rockchip_armv8_DEVICE_.*=y$' .config
           grep -q '^CONFIG_TARGET_rockchip_armv8_DEVICE_hinlink_h28k=y$' .config
-          grep -q '^CONFIG_ALL_KMODS=y$' .config
-          grep -q '^CONFIG_ALL_NONSHARED=y$' .config
+          while IFS= read -r option; do
+            grep -Fqx "$option" .config || {
+              echo "Official kernel option was not preserved: $option"
+              exit 1
+            }
+          done < .config.official
           grep -q '^CONFIG_TARGET_ROOTFS_EXT4FS=y$' .config
           grep -q '^CONFIG_TARGET_ROOTFS_SQUASHFS=y$' .config
 
@@ -181,17 +181,29 @@ jobs:
           echo "=== Download completed, disk space ==="
           df -h / | tail -1
 
-      - name: 编译内核并校验 ABI
+      - name: 编译固件
+        working-directory: source
+        timeout-minutes: 300
+        run: |
+          echo "=== Build started at $(date) ==="
+          make -j"$(nproc)" V=s 2>&1 | tee build.log
+          code=${PIPESTATUS[0]}
+          echo "exit code: $code"
+          echo "=== Build finished at $(date), exit code: $code ==="
+          echo "=== Disk space ==="
+          df -h / | tail -1
+          if [ "$code" -ne 0 ]; then
+            tail -100 build.log
+            exit "$code"
+          fi
+
+      - name: 校验内核 ABI
         working-directory: source
         env:
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
         run: |
           set -eu
-          make -j"$(nproc)" tools/install V=s
-          make -j"$(nproc)" toolchain/install V=s
-          make -j"$(nproc)" target/linux/compile V=s
-
           PACKAGE_INDEX="https://downloads.immortalwrt.org/releases/${RELEASE_VERSION}/targets/rockchip/armv8/packages/index.json"
           OFFICIAL_KERNEL="$(curl -fsSL "$PACKAGE_INDEX" | jq -r '.packages.kernel')"
           OFFICIAL_ABI="$(printf '%s\n' "$OFFICIAL_KERNEL" \
@@ -215,22 +227,6 @@ jobs:
           fi
           echo "Kernel ABI matches the official release"
           echo "KERNEL_ABI=$BUILT_ABI" >> "$GITHUB_ENV"
-
-      - name: 编译固件
-        working-directory: source
-        timeout-minutes: 300
-        run: |
-          echo "=== Build started at $(date) ==="
-          make -j"$(nproc)" V=s 2>&1 | tee build.log
-          code=${PIPESTATUS[0]}
-          echo "exit code: $code"
-          echo "=== Build finished at $(date), exit code: $code ==="
-          echo "=== Disk space ==="
-          df -h / | tail -1
-          if [ "$code" -ne 0 ]; then
-            tail -100 build.log
-            exit "$code"
-          fi
 
       - name: 检查固件产物
         working-directory: source
