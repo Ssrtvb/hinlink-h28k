@@ -1,19 +1,16 @@
-name: Build HINLINK H28K
+name: Weekly HINLINK H28K build
 
 on:
+  schedule:
+    - cron: '23 21 * * 0'
   workflow_dispatch:
-  push:
-    paths:
-      - ".github/configs/hinlink-h28k.config"
-      - ".github/workflows/build.yml"
-      - "patches/**"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
-  group: build-hinlink-h28k-${{ github.ref }}
-  cancel-in-progress: true
+  group: build-hinlink-h28k
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -24,59 +21,267 @@ jobs:
       - name: Check out support repository
         uses: actions/checkout@v4
 
+      - name: Check disk space
+        run: |
+          echo "=== Initial disk space ==="
+          df -h /
+
+      - name: Free disk space
+        run: |
+          echo "=== Before cleanup ==="
+          df -h / | tail -1
+          sudo rm -rf /usr/share/dotnet 2>/dev/null || true
+          sudo rm -rf /usr/local/lib/android 2>/dev/null || true
+          sudo rm -rf /opt/ghc 2>/dev/null || true
+          sudo rm -rf /opt/hostedtoolcache 2>/dev/null || true
+          sudo rm -rf /usr/local/.ghcup 2>/dev/null || true
+          sudo rm -rf /usr/local/share/powershell 2>/dev/null || true
+          sudo rm -rf /usr/local/share/chromium 2>/dev/null || true
+          sudo rm -rf /usr/share/swift 2>/dev/null || true
+          sudo docker image prune -af 2>/dev/null || true
+          echo "=== After cleanup ==="
+          df -h / | tail -1
+
       - name: Install build dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            build-essential clang flex bison g++ gawk gcc-multilib \
-            gettext git libelf-dev libncurses-dev libssl-dev \
-            python3 python3-dev python3-pyelftools python3-setuptools \
-            rsync swig unzip zlib1g-dev file wget
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq build-essential clang flex bison g++ gawk \
+            gcc-multilib g++-multilib gettext git libncurses-dev libssl-dev \
+            python3 python3-dev python3-setuptools python3-pyelftools rsync \
+            unzip zlib1g-dev file wget curl jq upx-ucl time
 
-      - name: Check out upstream 25.12 source
+      - name: Resolve latest stable release
+        id: release
         run: |
-          git clone --depth 1 --branch openwrt-25.12 --single-branch \
-            https://github.com/immortalwrt/immortalwrt.git source
+          set -eu
+          UPSTREAM=https://github.com/immortalwrt/immortalwrt.git
+          RELEASE_TAG=""
+          for tag in $(git ls-remote --tags --refs "$UPSTREAM" 'refs/tags/v*' \
+            | awk -F/ '$3 ~ /^v[0-9]+\.[0-9]+\.[0-9]+$/ { print $3 }' \
+            | sort -Vr); do
+            version="${tag#v}"
+            buildinfo="https://downloads.immortalwrt.org/releases/${version}/targets/rockchip/armv8/config.buildinfo"
+            if curl -fsI "$buildinfo" >/dev/null; then
+              RELEASE_TAG="$tag"
+              break
+            fi
+          done
+          test -n "$RELEASE_TAG"
+          RELEASE_VERSION="${RELEASE_TAG#v}"
+          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$RELEASE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Latest stable release: $RELEASE_TAG"
 
-      - name: Apply H28K patches
+      - name: Clone release source
+        run: |
+          git clone --branch "${{ steps.release.outputs.tag }}" --single-branch --depth=1 \
+            https://github.com/immortalwrt/immortalwrt.git source
+          test "$(git -C source describe --tags --exact-match)" = "${{ steps.release.outputs.tag }}"
+          echo "=== Clone completed, disk space ==="
+          df -h / | tail -1
+
+      - name: Apply HINLINK H28K patches
         working-directory: source
         run: |
+          set -eu
           for patch in "$GITHUB_WORKSPACE"/patches/*.patch; do
-            echo "Applying $(basename "$patch")"
-            git apply --check "$patch"
-            git apply "$patch"
+            echo "=== Applying patch: $(basename "$patch") ==="
+            git apply --check --3way "$patch" || {
+              echo "Patch check failed: $patch"
+              git apply --reject "$patch" || true
+              find . -name '*.rej' -print -exec cat {} \;
+              exit 1
+            }
+            git apply --3way "$patch"
           done
           git diff --check
+          git diff --stat
 
-      - name: Update feeds
+      - name: Pin release feeds
         working-directory: source
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
         run: |
+          set -eu
+          BUILDINFO_URL="https://downloads.immortalwrt.org/releases/${RELEASE_VERSION}/targets/rockchip/armv8"
+          curl -fsSL "$BUILDINFO_URL/feeds.buildinfo" -o feeds.conf.default
+          echo "src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki.git;main" >> feeds.conf.default
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
-      - name: Configure H28K target
+      - name: Configure from official buildinfo
         working-directory: source
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
         run: |
-          cp "$GITHUB_WORKSPACE/.github/configs/hinlink-h28k.config" .config
-          make defconfig
-          grep -q '^CONFIG_TARGET_rockchip_armv8_DEVICE_hinlink_h28k=y$' .config
+          set -eu
+          BUILDINFO_URL="https://downloads.immortalwrt.org/releases/${RELEASE_VERSION}/targets/rockchip/armv8"
+          curl -fsSL "$BUILDINFO_URL/config.buildinfo" -o .config
 
-      - name: Download sources
+          sed -i -E \
+            -e '/^CONFIG_TARGET_MULTI_PROFILE=/d' \
+            -e '/^CONFIG_TARGET_ALL_PROFILES=/d' \
+            -e '/^CONFIG_TARGET_PER_DEVICE_ROOTFS=/d' \
+            -e '/^CONFIG_TARGET_DEVICE_rockchip_armv8_DEVICE_/d' \
+            -e '/^CONFIG_TARGET_DEVICE_PACKAGES_rockchip_armv8_DEVICE_/d' \
+            -e '/^CONFIG_TARGET_rockchip_armv8_DEVICE_/d' \
+            -e '/^CONFIG_TARGET_KERNEL_PARTSIZE=/d' \
+            -e '/^CONFIG_TARGET_ROOTFS_PARTSIZE=/d' \
+            -e '/^CONFIG_PACKAGE_luci-app-nikki=/d' \
+            -e '/^CONFIG_PACKAGE_luci-app-argon-config=/d' \
+            -e '/^CONFIG_PACKAGE_kmod-mt7921u=/d' \
+            -e '/^CONFIG_PACKAGE_openssh-sftp-server=/d' \
+            .config
+
+          cat >> .config <<'EOF'
+          # CONFIG_TARGET_MULTI_PROFILE is not set
+          # CONFIG_TARGET_ALL_PROFILES is not set
+          # CONFIG_TARGET_PER_DEVICE_ROOTFS is not set
+          EOF
+          cat "$GITHUB_WORKSPACE/.github/configs/hinlink-h28k.config" >> .config
+          make defconfig 2>&1 || {
+            echo "=== defconfig failed ==="
+            make defconfig V=sc
+            exit 1
+          }
+
+          echo "=== Target device ==="
+          grep '^CONFIG_TARGET_rockchip_armv8_DEVICE_.*=y$' .config
+          grep -q '^CONFIG_TARGET_rockchip_armv8_DEVICE_hinlink_h28k=y$' .config
+          grep -q '^CONFIG_ALL_KMODS=y$' .config
+          grep -q '^CONFIG_ALL_NONSHARED=y$' .config
+
+      - name: Download source packages
         working-directory: source
+        timeout-minutes: 90
         run: |
-          make -j"$(nproc)" download || make -j1 download V=s
-          find dl -type f -size -1024c -delete
+          make -j"$(nproc)" download V=s
+          find dl -size -1024c -print -delete
+          echo "=== Download completed, disk space ==="
+          df -h / | tail -1
+
+      - name: Compile kernel and verify ABI
+        working-directory: source
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -eu
+          make -j"$(nproc)" target/linux/compile V=s
+
+          PACKAGE_INDEX="https://downloads.immortalwrt.org/releases/${RELEASE_VERSION}/targets/rockchip/armv8/packages/index.json"
+          OFFICIAL_KERNEL="$(curl -fsSL "$PACKAGE_INDEX" | jq -r '.packages.kernel')"
+          OFFICIAL_ABI="$(printf '%s\n' "$OFFICIAL_KERNEL" \
+            | sed -nE 's/.*~([0-9a-f]{32})-r[0-9]+/\1/p')"
+          VERMAGIC_FILE="$(find build_dir/target-* \
+            -path '*/linux-rockchip_armv8/linux-*/.vermagic' -print -quit)"
+          test -n "$OFFICIAL_ABI"
+          test -n "$VERMAGIC_FILE"
+          BUILT_ABI="$(tr -d '[:space:]' < "$VERMAGIC_FILE")"
+
+          {
+            echo "release=$RELEASE_TAG"
+            echo "source_commit=$(git rev-parse HEAD)"
+            echo "official_kernel=$OFFICIAL_KERNEL"
+            echo "official_abi=$OFFICIAL_ABI"
+            echo "built_vermagic_file=$VERMAGIC_FILE"
+            echo "built_abi=$BUILT_ABI"
+          } | tee abi-report.txt
+
+          if [ "$BUILT_ABI" != "$OFFICIAL_ABI" ]; then
+            echo "Kernel ABI mismatch"
+            exit 1
+          fi
+          echo "Kernel ABI matches the official release"
 
       - name: Build firmware
         working-directory: source
-        run: make -j"$(nproc)"
+        timeout-minutes: 300
+        run: |
+          echo "=== Build started at $(date) ==="
+          make -j"$(nproc)" V=s 2>&1 | tee build.log
+          code=${PIPESTATUS[0]}
+          echo "exit code: $code"
+          echo "=== Build finished at $(date), exit code: $code ==="
+          echo "=== Disk space ==="
+          df -h / | tail -1
+          if [ "$code" -ne 0 ]; then
+            tail -100 build.log
+            exit "$code"
+          fi
 
-      - name: Upload firmware
+      - name: Check firmware artifacts
+        working-directory: source
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          FIRMWARE="$(find bin/targets/rockchip/armv8 -maxdepth 1 -type f \
+            -name '*hinlink_h28k*squashfs-sysupgrade.img.gz' -print -quit)"
+          if [ -z "$FIRMWARE" ] || [ ! -f "$FIRMWARE" ]; then
+            echo "Firmware file not found"
+            ls -lh bin/targets/rockchip/armv8/ 2>/dev/null || true
+            exit 1
+          fi
+          sha256sum "$FIRMWARE" | tee "$FIRMWARE.sha256sum"
+          ls -lh "$FIRMWARE" "$FIRMWARE.sha256sum" abi-report.txt
+          echo "FIRMWARE_PATH=$FIRMWARE" >> "$GITHUB_ENV"
+          echo "FIRMWARE_NAME=$(basename "$FIRMWARE")" >> "$GITHUB_ENV"
+          echo "BUILD_DATE=$(TZ=Asia/Hong_Kong date +'%Y%m%d')" >> "$GITHUB_ENV"
+          echo "UPSTREAM_HASH=$(git log -1 --format='%h')" >> "$GITHUB_ENV"
+          echo "RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
+
+      - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
         with:
-          name: hinlink-h28k-25.12
+          name: hinlink-h28k-${{ env.RELEASE_TAG }}
           path: |
-            source/bin/targets/rockchip/armv8/*hinlink_h28k*
-            source/bin/targets/rockchip/armv8/sha256sums
-          if-no-files-found: error
+            source/${{ env.FIRMWARE_PATH }}
+            source/${{ env.FIRMWARE_PATH }}.sha256sum
+            source/abi-report.txt
+          retention-days: 30
+
+      - name: Upload firmware release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: h28k-${{ env.RELEASE_TAG }}-${{ env.BUILD_DATE }}
+          name: "H28K firmware ${{ env.RELEASE_TAG }} (${{ env.BUILD_DATE }})"
+          body: |
+            ## HINLINK H28K weekly firmware
+
+            - **Build date**: ${{ env.BUILD_DATE }}
+            - **Upstream release**: ${{ env.RELEASE_TAG }} (${{ env.UPSTREAM_HASH }})
+            - **Device**: HINLINK H28K (RK3528)
+            - **Firmware**: ${{ env.FIRMWARE_NAME }}
+            - **Kernel ABI**: verified against the official release repository
+          files: |
+            source/${{ env.FIRMWARE_PATH }}
+            source/${{ env.FIRMWARE_PATH }}.sha256sum
+            source/abi-report.txt
+          make_latest: true
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-failed
+          path: |
+            source/build.log
+            source/abi-report.txt
+          if-no-files-found: ignore
           retention-days: 7
+
+      - name: Report result
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "HINLINK H28K build succeeded"
+            echo "Release: https://github.com/${{ github.repository }}/releases/tag/h28k-${{ env.RELEASE_TAG }}-${{ env.BUILD_DATE }}"
+          elif [ "${{ job.status }}" = "failure" ]; then
+            echo "Build failed; check the logs above"
+            echo "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          else
+            echo "Build status: ${{ job.status }}"
+          fi
