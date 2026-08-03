@@ -28,21 +28,6 @@ GitHub Actions 每周自动运行一次，也可以在 Actions 页面手动触�
 - MT7921U USB 无线网卡驱动：`kmod-mt7921u`
 - OpenSSH SFTP 服务：`openssh-sftp-server`
 
-## 手动应用补丁
-
-先准备 ImmortalWrt 正式版源码，再按顺序应用补丁：
-
-```sh
-git clone --branch v25.12.1 --single-branch \
-  https://github.com/immortalwrt/immortalwrt.git source
-cd source
-
-for patch in /path/to/hinlink-h28k/patches/*.patch; do
-  git apply --check "$patch"
-  git apply "$patch"
-done
-```
-
 ## 设备信息
 
 - 型号：HINLINK H28K
