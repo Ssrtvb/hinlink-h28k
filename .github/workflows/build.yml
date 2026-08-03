@@ -116,6 +116,9 @@ jobs:
         working-directory: source
         run: |
           set -eu
+          curl -fsSL \
+            "https://downloads.immortalwrt.org/releases/${{ steps.release.outputs.version }}/targets/rockchip/armv8/feeds.buildinfo" \
+            -o feeds.conf.default
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
