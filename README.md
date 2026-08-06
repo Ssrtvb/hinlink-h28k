@@ -23,7 +23,7 @@ GitHub Actions 每周自动运行一次，也可以在 Actions 页面手动触�
 
 ## 默认包含
 
-- Argon 配置插件：`luci-app-argon-config`
+- Oasisic 主题：`luci-theme-oasisic`
 - Nikki：`luci-app-nikki`
 - MT7921U USB 无线网卡驱动：`kmod-mt7921u`
 - OpenSSH SFTP 服务：`openssh-sftp-server`

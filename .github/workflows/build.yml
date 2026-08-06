@@ -97,6 +97,8 @@ jobs:
           set -eu
           git clone --depth=1 --branch main \
             https://github.com/nikkinikki-org/OpenWrt-nikki.git package/nikki
+          git clone --depth=1 --branch main \
+            https://github.com/Hawaiine/luci-theme-oasisic.git package/luci-theme-oasisic
           for patch in "$GITHUB_WORKSPACE"/patches/*.patch; do
             echo "=== Applying patch: $(basename "$patch") ==="
             git apply --check --3way "$patch" || {
