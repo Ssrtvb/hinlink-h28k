@@ -1,0 +1,294 @@
+name: 自托管编译 HINLINK H28K 固件
+
+on:
+  workflow_dispatch:
+    inputs:
+      use_cache:
+        description: 使用 GitHub Actions 源码缓存
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-local-hinlink-h28k
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: [self-hosted, Linux, X64, h28k-builder]
+    timeout-minutes: 360
+
+    steps:
+      - name: 检出支持仓库
+        uses: actions/checkout@v4
+
+      - name: 检查磁盘空间
+        run: |
+          echo "=== Initial disk space ==="
+          df -h /
+
+      - name: 安装编译依赖
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential \
+            bzip2 ccache clang cmake cpio curl device-tree-compiler ecj fastjar flex gawk \
+            gettext gcc-multilib g++-multilib git gnutls-dev gperf haveged help2man intltool \
+            lib32gcc-s1 libc6-dev-i386 libelf-dev libglib2.0-dev libgmp3-dev libltdl-dev \
+            libmpc-dev libmpfr-dev libncurses-dev libpython3-dev libreadline-dev libssl-dev \
+            libtool libyaml-dev libz-dev lld llvm lrzsz mkisofs msmtp nano ninja-build p7zip \
+            p7zip-full patch pkgconf python3 python3-pip python3-ply python3-docutils \
+            python3-pyelftools qemu-utils re2c rsync scons squashfs-tools subversion swig \
+            texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev zstd jq time
+
+      - name: 选择最新正式版
+        id: release
+        run: |
+          set -eu
+          UPSTREAM=https://github.com/immortalwrt/immortalwrt.git
+          RELEASE_TAG=""
+          for tag in $(git ls-remote --tags --refs "$UPSTREAM" 'refs/tags/v*' \
+            | awk -F/ '$3 ~ /^v[0-9]+\.[0-9]+\.[0-9]+$/ { print $3 }' \
+            | sort -Vr); do
+            version="${tag#v}"
+            buildinfo="https://downloads.immortalwrt.org/releases/${version}/targets/rockchip/armv8/config.buildinfo"
+            if curl -fsI "$buildinfo" >/dev/null; then
+              RELEASE_TAG="$tag"
+              break
+            fi
+          done
+          test -n "$RELEASE_TAG"
+          RELEASE_VERSION="${RELEASE_TAG#v}"
+          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$RELEASE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Latest stable release: $RELEASE_TAG"
+
+      - name: 克隆正式版源码
+        run: |
+          git clone --branch "${{ steps.release.outputs.tag }}" --single-branch --depth=1 \
+            https://github.com/immortalwrt/immortalwrt.git source
+          echo "=== Clone completed, disk space ==="
+          df -h / | tail -1
+
+      - name: 应用 HINLINK H28K 补丁
+        working-directory: source
+        run: |
+          set -eu
+          git clone --depth=1 --branch main \
+            https://github.com/nikkinikki-org/OpenWrt-nikki.git package/nikki
+          for patch in "$GITHUB_WORKSPACE"/patches/*.patch; do
+            echo "=== Applying patch: $(basename "$patch") ==="
+            git apply --check --3way "$patch" || {
+              echo "Patch check failed: $patch"
+              git apply --reject "$patch" || true
+              find . -name '*.rej' -print -exec cat {} \;
+              exit 1
+            }
+            git apply --3way "$patch"
+          done
+          test "$(grep -c 'CONFIG_BUILDBOT' include/feeds.mk)" -eq 2
+          sed -i 's/CONFIG_BUILDBOT/CONFIG_ALL_KMODS/g' include/feeds.mk
+          test "$(grep -c 'CONFIG_ALL_KMODS' include/feeds.mk)" -eq 2
+          git diff --stat
+
+      - name: 更新 feeds
+        working-directory: source
+        run: |
+          set -eu
+          curl -fsSL \
+            "https://downloads.immortalwrt.org/releases/${{ steps.release.outputs.version }}/targets/rockchip/armv8/feeds.buildinfo" \
+            -o feeds.conf.default
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: 提取官方内核配置
+        working-directory: source
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -eu
+          BUILDINFO_URL="https://downloads.immortalwrt.org/releases/${RELEASE_VERSION}/targets/rockchip/armv8"
+          curl -fsSL "$BUILDINFO_URL/config.buildinfo" -o .config.buildinfo
+
+          awk '
+            /^CONFIG_ALL_KMODS=y$/ ||
+            /^CONFIG_DEVEL=y$/ ||
+            (/^CONFIG_KERNEL_[A-Za-z0-9_]+=/ &&
+              $0 !~ /^CONFIG_KERNEL_BUILD_(DOMAIN|USER)=/) ||
+            /^# CONFIG_KERNEL_[A-Za-z0-9_]+ is not set$/
+          ' .config.buildinfo > .config.official
+
+          grep -q '^CONFIG_ALL_KMODS=y$' .config.official
+          grep -q '^CONFIG_DEVEL=y$' .config.official
+
+          CUSTOM_CONFIG="$GITHUB_WORKSPACE/.github/configs/hinlink-h28k.config"
+          cat .config.official "$CUSTOM_CONFIG" > .config
+          make defconfig 2>&1 || {
+            echo "=== defconfig failed ==="
+            make defconfig V=sc
+            exit 1
+          }
+
+          echo "=== Target device ==="
+          grep '^CONFIG_TARGET_rockchip_armv8_DEVICE_.*=y$' .config
+          grep -q '^CONFIG_TARGET_rockchip_armv8_DEVICE_hinlink_h28k=y$' .config
+          while IFS= read -r option; do
+            grep -Fqx "$option" .config || {
+              echo "Official config option was not preserved: $option"
+              exit 1
+            }
+          done < .config.official
+          grep -q '^CONFIG_PER_FEED_REPO=y$' .config
+
+      - name: 恢复源码缓存
+        id: source-cache
+        if: ${{ github.event_name == 'schedule' || inputs.use_cache }}
+        uses: actions/cache/restore@v4
+        with:
+          path: source/dl
+          key: immortalwrt-dl-${{ runner.os }}-${{ steps.release.outputs.version }}-${{ github.sha }}
+          restore-keys: |
+            immortalwrt-dl-${{ runner.os }}-${{ steps.release.outputs.version }}-
+            immortalwrt-dl-${{ runner.os }}-
+
+      - name: 下载源码包
+        working-directory: source
+        timeout-minutes: 90
+        run: |
+          make -j"$(nproc)" download V=s
+          find dl -size -1024c -print -delete
+          du -sh dl
+          echo "=== Download completed, disk space ==="
+          df -h / | tail -1
+
+      - name: 保存源码缓存
+        if: ${{ (github.event_name == 'schedule' || inputs.use_cache) && steps.source-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: source/dl
+          key: immortalwrt-dl-${{ runner.os }}-${{ steps.release.outputs.version }}-${{ github.sha }}
+
+      - name: 编译固件
+        working-directory: source
+        timeout-minutes: 300
+        run: |
+          echo "=== Build started at $(date) ==="
+          make -j"$(nproc)" V=s 2>&1 | tee build.log
+          code=${PIPESTATUS[0]}
+          echo "exit code: $code"
+          echo "=== Build finished at $(date), exit code: $code ==="
+          echo "=== Disk space ==="
+          df -h / | tail -1
+          if [ "$code" -ne 0 ]; then
+            tail -100 build.log
+            exit "$code"
+          fi
+
+      - name: 校验内核 ABI
+        working-directory: source
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -eu
+          PACKAGE_INDEX="https://downloads.immortalwrt.org/releases/${RELEASE_VERSION}/targets/rockchip/armv8/packages/index.json"
+          OFFICIAL_KERNEL="$(curl -fsSL "$PACKAGE_INDEX" | jq -r '.packages.kernel')"
+          OFFICIAL_ABI="$(printf '%s\n' "$OFFICIAL_KERNEL" \
+            | sed -nE 's/.*~([0-9a-f]{32})-r[0-9]+/\1/p')"
+          VERMAGIC_FILE="$(find build_dir/target-* \
+            -path '*/linux-rockchip_armv8/linux-*/.vermagic' -print -quit)"
+          DISTFEEDS_FILE="$(find staging_dir build_dir/target-* \
+            -path '*/etc/apk/repositories.d/distfeeds.list' -print -quit)"
+          test -n "$OFFICIAL_ABI"
+          test -n "$VERMAGIC_FILE"
+          test -n "$DISTFEEDS_FILE"
+          BUILT_ABI="$(tr -d '[:space:]' < "$VERMAGIC_FILE")"
+
+          echo "release=$RELEASE_TAG"
+          echo "source_commit=$(git rev-parse HEAD)"
+          echo "official_kernel=$OFFICIAL_KERNEL"
+          echo "official_abi=$OFFICIAL_ABI"
+          echo "built_vermagic_file=$VERMAGIC_FILE"
+          echo "built_abi=$BUILT_ABI"
+          echo "distfeeds_file=$DISTFEEDS_FILE"
+
+          if [ "$BUILT_ABI" != "$OFFICIAL_ABI" ]; then
+            echo "Kernel ABI mismatch"
+            exit 1
+          fi
+          echo "Kernel ABI matches the official release"
+          grep -Eq "/targets/rockchip/armv8/kmods/[^/]+-${BUILT_ABI}/packages\\.adb$" "$DISTFEEDS_FILE" || {
+            echo "Official kmods repository is missing from distfeeds"
+            cat "$DISTFEEDS_FILE"
+            exit 1
+          }
+          echo "Official kmods repository is configured"
+          echo "KERNEL_ABI=$BUILT_ABI" >> "$GITHUB_ENV"
+
+      - name: 检查固件产物
+        working-directory: source
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          shopt -s nullglob
+          FIRMWARE_FILES=(bin/targets/rockchip/armv8/*hinlink_h28k*sysupgrade.img.gz)
+          if [ "${#FIRMWARE_FILES[@]}" -eq 0 ]; then
+            echo "HINLINK H28K sysupgrade firmware not found"
+            ls -lh bin/targets/rockchip/armv8/ 2>/dev/null || true
+            exit 1
+          fi
+          ls -lh "${FIRMWARE_FILES[@]}"
+          echo "BUILD_DATE=$(TZ=Asia/Hong_Kong date +'%Y%m%d')" >> "$GITHUB_ENV"
+          echo "UPSTREAM_HASH=$(git log -1 --format='%h')" >> "$GITHUB_ENV"
+          echo "RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
+
+      - name: 上传固件构件
+        uses: actions/upload-artifact@v4
+        with:
+          name: HINLINK H28K 固件-${{ env.RELEASE_TAG }}
+          path: source/bin/targets/rockchip/armv8/*hinlink_h28k*sysupgrade.img.gz
+          retention-days: 30
+
+      - name: 发布固件 Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: h28k-${{ env.RELEASE_TAG }}-${{ env.BUILD_DATE }}
+          name: "HINLINK H28K 固件 ${{ env.RELEASE_TAG }} (${{ env.BUILD_DATE }})"
+          body: |
+            ## HINLINK H28K weekly firmware
+
+            - **Build date**: ${{ env.BUILD_DATE }}
+            - **Upstream release**: ${{ env.RELEASE_TAG }} (${{ env.UPSTREAM_HASH }})
+            - **Device**: HINLINK H28K (RK3528)
+            - **Firmware**: generated sysupgrade images
+            - **Kernel ABI**: `${{ env.KERNEL_ABI }}`
+          files: source/bin/targets/rockchip/armv8/*hinlink_h28k*sysupgrade.img.gz
+          make_latest: true
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 上传失败编译日志
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: 编译失败日志
+          path: source/build.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: 报告构建结果
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "HINLINK H28K build succeeded"
+            echo "Release: https://github.com/${{ github.repository }}/releases/tag/h28k-${{ env.RELEASE_TAG }}-${{ env.BUILD_DATE }}"
+          elif [ "${{ job.status }}" = "failure" ]; then
+            echo "Build failed; check the logs above"
+            echo "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          else
+            echo "Build status: ${{ job.status }}"
+          fi
