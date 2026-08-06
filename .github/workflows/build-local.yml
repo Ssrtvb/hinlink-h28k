@@ -1,4 +1,4 @@
-name: 本地编译 HINLINK H28K 固件
+name: 自托管编译 HINLINK H28K 固件
 
 on:
   workflow_dispatch:
@@ -29,22 +29,6 @@ jobs:
         run: |
           echo "=== Initial disk space ==="
           df -h /
-
-      - name: 清理磁盘空间
-        run: |
-          echo "=== Before cleanup ==="
-          df -h / | tail -1
-          sudo rm -rf /usr/share/dotnet 2>/dev/null || true
-          sudo rm -rf /usr/local/lib/android 2>/dev/null || true
-          sudo rm -rf /opt/ghc 2>/dev/null || true
-          sudo rm -rf /opt/hostedtoolcache 2>/dev/null || true
-          sudo rm -rf /usr/local/.ghcup 2>/dev/null || true
-          sudo rm -rf /usr/local/share/powershell 2>/dev/null || true
-          sudo rm -rf /usr/local/share/chromium 2>/dev/null || true
-          sudo rm -rf /usr/share/swift 2>/dev/null || true
-          sudo docker image prune -af 2>/dev/null || true
-          echo "=== After cleanup ==="
-          df -h / | tail -1
 
       - name: 安装编译依赖
         run: |
