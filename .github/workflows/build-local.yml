@@ -1,8 +1,6 @@
-name: 每周自动编译 HINLINK H28K 固件
+name: 本地编译 HINLINK H28K 固件
 
 on:
-  schedule:
-    - cron: '23 21 * * 0'
   workflow_dispatch:
     inputs:
       use_cache:
@@ -15,12 +13,12 @@ permissions:
   contents: write
 
 concurrency:
-  group: build-hinlink-h28k
+  group: build-local-hinlink-h28k
   cancel-in-progress: false
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, Linux, X64, h28k-builder]
     timeout-minutes: 360
 
     steps:
