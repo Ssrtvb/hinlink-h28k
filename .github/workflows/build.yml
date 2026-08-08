@@ -57,7 +57,7 @@ jobs:
             gettext gcc-multilib g++-multilib git gnutls-dev gperf haveged help2man intltool \
             lib32gcc-s1 libc6-dev-i386 libelf-dev libglib2.0-dev libgmp3-dev libltdl-dev \
             libmpc-dev libmpfr-dev libncurses-dev libpython3-dev libreadline-dev libssl-dev \
-            libtool libyaml-dev libz-dev lld llvm lrzsz mkisofs msmtp nano ninja-build p7zip \
+            libtool libyaml-dev libz-dev lld llvm lrzsz mkisofs msmtp nano ninja-build openssl p7zip \
             p7zip-full patch pkgconf python3 python3-pip python3-ply python3-docutils \
             python3-pyelftools qemu-utils re2c rsync scons squashfs-tools subversion swig \
             texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev zstd jq time
@@ -95,8 +95,6 @@ jobs:
         working-directory: source
         run: |
           set -eu
-          git clone --depth=1 --branch main \
-            https://github.com/nikkinikki-org/OpenWrt-nikki.git package/nikki
           for patch in "$GITHUB_WORKSPACE"/patches/*.patch; do
             echo "=== Applying patch: $(basename "$patch") ==="
             git apply --check --3way "$patch" || {
@@ -119,8 +117,20 @@ jobs:
           curl -fsSL \
             "https://downloads.immortalwrt.org/releases/${{ steps.release.outputs.version }}/targets/rockchip/armv8/feeds.buildinfo" \
             -o feeds.conf.default
+          sha256sum feeds.conf.default > .feeds.conf.default.sha256
           ./scripts/feeds update -a
           ./scripts/feeds install -a
+          sha256sum -c .feeds.conf.default.sha256
+
+      - name: 加载构建配置
+        working-directory: source
+        run: |
+          set -eu
+          bash "$GITHUB_WORKSPACE/scripts/build_config.sh" prepare \
+            . \
+            "$GITHUB_WORKSPACE/config/build.conf" \
+            "$GITHUB_WORKSPACE/config/git_packages.txt"
+          sha256sum -c .feeds.conf.default.sha256
 
       - name: 提取官方内核配置
         working-directory: source
@@ -142,24 +152,10 @@ jobs:
           grep -q '^CONFIG_ALL_KMODS=y$' .config.official
           grep -q '^CONFIG_DEVEL=y$' .config.official
 
-          CUSTOM_CONFIG="$GITHUB_WORKSPACE/.github/configs/hinlink-h28k.config"
-          cat .config.official "$CUSTOM_CONFIG" > .config
-          make defconfig 2>&1 || {
-            echo "=== defconfig failed ==="
-            make defconfig V=sc
-            exit 1
-          }
-
-          echo "=== Target device ==="
-          grep '^CONFIG_TARGET_rockchip_armv8_DEVICE_.*=y$' .config
-          grep -q '^CONFIG_TARGET_rockchip_armv8_DEVICE_hinlink_h28k=y$' .config
-          while IFS= read -r option; do
-            grep -Fqx "$option" .config || {
-              echo "Official config option was not preserved: $option"
-              exit 1
-            }
-          done < .config.official
-          grep -q '^CONFIG_PER_FEED_REPO=y$' .config
+          bash "$GITHUB_WORKSPACE/scripts/build_config.sh" assemble-config \
+            . \
+            .config.official \
+            "$GITHUB_WORKSPACE/config/hinlink-h28k.config"
 
       - name: 恢复源码缓存
         id: source-cache
@@ -212,39 +208,19 @@ jobs:
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
         run: |
           set -eu
-          PACKAGE_INDEX="https://downloads.immortalwrt.org/releases/${RELEASE_VERSION}/targets/rockchip/armv8/packages/index.json"
-          OFFICIAL_KERNEL="$(curl -fsSL "$PACKAGE_INDEX" | jq -r '.packages.kernel')"
-          OFFICIAL_ABI="$(printf '%s\n' "$OFFICIAL_KERNEL" \
-            | sed -nE 's/.*~([0-9a-f]{32})-r[0-9]+/\1/p')"
-          VERMAGIC_FILE="$(find build_dir/target-* \
-            -path '*/linux-rockchip_armv8/linux-*/.vermagic' -print -quit)"
-          DISTFEEDS_FILE="$(find staging_dir build_dir/target-* \
-            -path '*/etc/apk/repositories.d/distfeeds.list' -print -quit)"
-          test -n "$OFFICIAL_ABI"
-          test -n "$VERMAGIC_FILE"
-          test -n "$DISTFEEDS_FILE"
-          BUILT_ABI="$(tr -d '[:space:]' < "$VERMAGIC_FILE")"
+          bash "$GITHUB_WORKSPACE/scripts/build_config.sh" check-abi \
+            . \
+            "$GITHUB_WORKSPACE/config/build.conf" \
+            "$RELEASE_VERSION" \
+            "$RELEASE_TAG" \
+            "$GITHUB_ENV"
 
-          echo "release=$RELEASE_TAG"
-          echo "source_commit=$(git rev-parse HEAD)"
-          echo "official_kernel=$OFFICIAL_KERNEL"
-          echo "official_abi=$OFFICIAL_ABI"
-          echo "built_vermagic_file=$VERMAGIC_FILE"
-          echo "built_abi=$BUILT_ABI"
-          echo "distfeeds_file=$DISTFEEDS_FILE"
-
-          if [ "$BUILT_ABI" != "$OFFICIAL_ABI" ]; then
-            echo "Kernel ABI mismatch"
-            exit 1
-          fi
-          echo "Kernel ABI matches the official release"
-          grep -Eq "/targets/rockchip/armv8/kmods/[^/]+-${BUILT_ABI}/packages\\.adb$" "$DISTFEEDS_FILE" || {
-            echo "Official kmods repository is missing from distfeeds"
-            cat "$DISTFEEDS_FILE"
-            exit 1
-          }
-          echo "Official kmods repository is configured"
-          echo "KERNEL_ABI=$BUILT_ABI" >> "$GITHUB_ENV"
+      - name: 校验默认主题
+        working-directory: source
+        run: |
+          bash "$GITHUB_WORKSPACE/scripts/build_config.sh" validate-theme \
+            . \
+            "$GITHUB_WORKSPACE/config/build.conf"
 
       - name: 检查固件产物
         working-directory: source
