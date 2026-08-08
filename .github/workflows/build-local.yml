@@ -228,15 +228,14 @@ jobs:
           tag_name: h28k-${{ env.RELEASE_TAG }}-${{ env.BUILD_DATE }}
           name: "HINLINK H28K 固件 ${{ env.RELEASE_TAG }} (${{ env.BUILD_DATE }})"
           body: |
-            ## HINLINK H28K weekly firmware
+            ## HINLINK H28K 固件
 
-            - **Build date**: ${{ env.BUILD_DATE }}
-            - **Upstream release**: ${{ env.RELEASE_TAG }} (${{ env.UPSTREAM_HASH }})
-            - **Device**: HINLINK H28K (RK3528)
-            - **Management IP**: `${{ env.FIRMWARE_LAN_IP }}`
-            - **Root password**: `${{ env.FIRMWARE_PASSWORD }}`
-            - **Firmware**: generated sysupgrade images
-            - **Kernel ABI**: `${{ env.KERNEL_ABI }}`
+            - **编译日期**：${{ env.BUILD_DATE }}
+            - **上游版本**：${{ env.RELEASE_TAG }} (${{ env.UPSTREAM_HASH }})
+            - **设备型号**：HINLINK H28K (RK3528)
+            - **管理地址**：`${{ env.FIRMWARE_LAN_IP }}`
+            - **root 密码**：`${{ env.FIRMWARE_PASSWORD }}`
+            - **内核 ABI**：`${{ env.KERNEL_ABI }}`
           files: source/bin/targets/rockchip/armv8/*hinlink_h28k*sysupgrade.img.gz
           make_latest: true
           fail_on_unmatched_files: true
