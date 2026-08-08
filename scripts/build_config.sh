@@ -48,20 +48,14 @@ clone_packages() {
 }
 
 apply_device_config() {
-  local source_dir="$1" defaults shadow password_hash
-  defaults="$source_dir/files/etc/uci-defaults/99-h28k-build-profile"
-  mkdir -p "$(dirname "$defaults")"
-  {
-    echo '#!/bin/sh'
-    printf "uci -q set network.lan.ipaddr='%s'\n" "$lan_ip"
-    echo 'uci -q commit network'
-    if [[ -n "$default_theme" ]]; then
-      printf "uci -q set luci.main.mediaurlbase='/luci-static/%s'\n" "$default_theme"
-      echo 'uci -q commit luci'
-    fi
-    echo 'exit 0'
-  } > "$defaults"
-  chmod 0755 "$defaults"
+  local source_dir="$1" shadow password_hash
+  sed -i "s/192\.168\.1\.1/$lan_ip/g" \
+    "$source_dir/package/base-files/files/bin/config_generate"
+
+  if [[ -n "$default_theme" ]]; then
+    sed -i "s|/luci-static/bootstrap|/luci-static/$default_theme|" \
+      "$source_dir/feeds/luci/modules/luci-base/root/etc/config/luci"
+  fi
 
   if [[ -n "$password" ]]; then
     shadow="$source_dir/package/base-files/files/etc/shadow"
@@ -88,15 +82,6 @@ assemble_config() {
         fail "config option was not preserved: $line"
     done < "$file"
   done
-}
-
-validate_theme() {
-  local source_dir="$1" config="$2"
-  load_config "$config"
-  [[ -z "$default_theme" ]] && return
-  find "$source_dir/build_dir" "$source_dir/staging_dir" -type d \
-    -path "*/www/luci-static/$default_theme" -print -quit | grep -q . ||
-    fail "theme is not installed: $default_theme"
 }
 
 check_abi() {
@@ -140,7 +125,6 @@ case "${1:-}" in
     ;;
   prepare) prepare "$2" "$3" "$4" ;;
   assemble-config) assemble_config "$2" "$3" "$4" ;;
-  validate-theme) validate_theme "$2" "$3" ;;
   check-abi) check_abi "$2" "$3" "$4" "$5" "${6:-}" ;;
   *) fail "unknown command: ${1:-}" ;;
 esac

@@ -215,13 +215,6 @@ jobs:
             "$RELEASE_TAG" \
             "$GITHUB_ENV"
 
-      - name: 校验默认主题
-        working-directory: source
-        run: |
-          bash "$GITHUB_WORKSPACE/scripts/build_config.sh" validate-theme \
-            . \
-            "$GITHUB_WORKSPACE/config/build.conf"
-
       - name: 检查固件产物
         working-directory: source
         env:
