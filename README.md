@@ -34,30 +34,6 @@ GitHub Actions 每周自动运行一次，也可以在 Actions 页面手动触�
 | `packages.conf` | 每行一条完整的 `git clone` 命令。 |
 | `hinlink-h28k.config` | H28K 目标、软件包和分区配置。 |
 
-当前固件参数：
-
-```conf
-lan_ip=192.168.0.2
-password=q
-default_theme=fluent
-check_official_abi=true
-```
-
-- `password` 使用明文填写，留空表示不修改 ImmortalWrt 默认密码状态。
-- `default_theme` 填写 `luci-static` 下的主题目录名，例如 `fluent`，不要填写
-  `luci-theme-fluent`；留空表示不修改默认主题。
-- `check_official_abi=true` 表示校验内核 ABI 与官方固件一致，设为 `false` 时跳过校验。
-- LAN、密码和默认主题会在编译阶段直接写入固件源码。
-
-额外软件包直接写完整克隆命令，目标路径相对于 OpenWrt 源码根目录，不能以 `/` 开头：
-
-```text
-git clone --depth=1 -b main https://github.com/nikkinikki-org/OpenWrt-nikki.git package/OpenWrt-nikki
-git clone --depth=1 https://github.com/LazuliKao/luci-theme-fluent.git package/luci-theme-fluent
-```
-
-该流程不会修改官方 `feeds.conf.default`，也不会添加自定义运行时软件源。
-
 ## 默认包含
 
 - Fluent LuCI 主题：`luci-theme-fluent`
