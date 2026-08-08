@@ -71,19 +71,6 @@ prepare() {
   apply_device_config "$source_dir"
 }
 
-assemble_config() {
-  local source_dir="$1" official="$2" custom="$3" file line
-  cat "$official" "$custom" > "$source_dir/.config"
-  make -C "$source_dir" defconfig
-  for file in "$official" "$custom"; do
-    while IFS= read -r line || [[ -n "$line" ]]; do
-      line="${line%$'\r'}"
-      [[ -z "$line" ]] || grep -Fqx -- "$line" "$source_dir/.config" ||
-        fail "config option was not preserved: $line"
-    done < "$file"
-  done
-}
-
 check_abi() {
   local source_dir="$1" config="$2" version="$3" tag="$4" github_env="${5:-}"
   local vermagic built_abi official_kernel official_abi distfeeds
@@ -124,7 +111,6 @@ case "${1:-}" in
     echo "lan_ip=$lan_ip password=$([[ -n "$password" ]] && echo set || echo unchanged) theme=${default_theme:-unchanged} abi=$check_official_abi git_packages=$clone_count"
     ;;
   prepare) prepare "$2" "$3" "$4" ;;
-  assemble-config) assemble_config "$2" "$3" "$4" ;;
   check-abi) check_abi "$2" "$3" "$4" "$5" "${6:-}" ;;
   *) fail "unknown command: ${1:-}" ;;
 esac

@@ -134,10 +134,9 @@ jobs:
           grep -q '^CONFIG_ALL_KMODS=y$' .config.official
           grep -q '^CONFIG_DEVEL=y$' .config.official
 
-          bash "$GITHUB_WORKSPACE/scripts/build_config.sh" assemble-config \
-            . \
-            .config.official \
-            "$GITHUB_WORKSPACE/config/hinlink-h28k.config"
+          cat .config.official \
+            "$GITHUB_WORKSPACE/config/hinlink-h28k.config" > .config
+          make defconfig
 
       - name: 恢复源码缓存
         id: source-cache
