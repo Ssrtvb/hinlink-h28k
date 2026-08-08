@@ -110,8 +110,8 @@ jobs:
           set -eu
           bash "$GITHUB_WORKSPACE/scripts/build_config.sh" prepare \
             . \
-            "$GITHUB_WORKSPACE/config/build.conf" \
-            "$GITHUB_WORKSPACE/config/git_packages.txt"
+            "$GITHUB_WORKSPACE/config/firmware.conf" \
+            "$GITHUB_WORKSPACE/config/packages.conf"
           sha256sum -c .feeds.conf.default.sha256
 
       - name: 提取官方内核配置
@@ -192,7 +192,7 @@ jobs:
           set -eu
           bash "$GITHUB_WORKSPACE/scripts/build_config.sh" check-abi \
             . \
-            "$GITHUB_WORKSPACE/config/build.conf" \
+            "$GITHUB_WORKSPACE/config/firmware.conf" \
             "$RELEASE_VERSION" \
             "$RELEASE_TAG" \
             "$GITHUB_ENV"

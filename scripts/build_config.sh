@@ -13,7 +13,7 @@ load_config() {
   while IFS='=' read -r key value || [[ -n "$key" ]]; do
     key="${key%$'\r'}"
     value="${value%$'\r'}"
-    [[ -z "$key" ]] && continue
+    [[ -z "$key" || "$key" =~ ^[[:space:]]*# ]] && continue
     case "$key" in
       lan_ip) lan_ip="$value" ;;
       password) password="$value" ;;
@@ -39,7 +39,7 @@ clone_packages() {
   local -a command
   while IFS= read -r line || [[ -n "$line" ]]; do
     line="${line%$'\r'}"
-    [[ "$line" =~ ^[[:space:]]*$ ]] && continue
+    [[ "$line" =~ ^[[:space:]]*(#|$) ]] && continue
     read -r -a command <<< "$line"
     [[ "${command[0]:-}" == git && "${command[1]:-}" == clone ]] ||
       fail "only git clone commands are allowed: $line"
@@ -120,7 +120,7 @@ check_abi() {
 case "${1:-}" in
   validate)
     load_config "$2"
-    clone_count="$(grep -cve '^[[:space:]]*$' "$3" || true)"
+    clone_count="$(grep -cEv '^[[:space:]]*(#|$)' "$3" || true)"
     echo "lan_ip=$lan_ip password=$([[ -n "$password" ]] && echo set || echo unchanged) theme=${default_theme:-unchanged} abi=$check_official_abi git_packages=$clone_count"
     ;;
   prepare) prepare "$2" "$3" "$4" ;;
