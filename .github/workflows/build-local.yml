@@ -104,7 +104,7 @@ jobs:
           ./scripts/feeds install -a
           sha256sum -c .feeds.conf.default.sha256
 
-      - name: 加载构建配置
+      - name: 应用构建配置
         working-directory: source
         run: |
           set -eu
@@ -112,8 +112,6 @@ jobs:
             . \
             "$GITHUB_WORKSPACE/config/firmware.conf" \
             "$GITHUB_WORKSPACE/config/packages.conf"
-          sha256sum -c .feeds.conf.default.sha256
-
       - name: 提取官方内核配置
         working-directory: source
         env:
