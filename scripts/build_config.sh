@@ -6,6 +6,7 @@ fail() { echo "error: $*" >&2; exit 1; }
 
 load_config() {
   local file="$1" key value octet
+  local -a octets
   lan_ip=""
   password=""
   default_theme=""
@@ -88,28 +89,21 @@ check_abi() {
       | jq -r '.packages.kernel')"
     official_abi="$(sed -nE 's/.*~([0-9a-f]{32})-r[0-9]+/\1/p' <<< "$official_kernel")"
     [[ "$built_abi" == "$official_abi" ]] || fail "kernel ABI does not match official release"
-    distfeeds="$(find "$source_dir/staging_dir" "$source_dir/build_dir" \
-      -path '*/etc/apk/repositories.d/distfeeds.list' -print 2>/dev/null \
-      | while read -r file; do
-          grep -Eq "/targets/rockchip/armv8/kmods/[^/]+-${built_abi}/packages\\.adb$" "$file" && {
-            echo "$file"
-            break
-          }
-        done)"
+    distfeeds="$(grep -rlE "/targets/rockchip/armv8/kmods/[^/]+-${built_abi}/packages\\.adb$" \
+      "$source_dir/staging_dir" "$source_dir/build_dir" 2>/dev/null | head -1)"
     [[ -n "$distfeeds" ]] || fail "official kmods repository is missing"
     echo "official_abi=$official_abi"
   else
     echo 'official ABI check disabled'
   fi
-  [[ -z "$github_env" ]] || echo "KERNEL_ABI=$built_abi" >> "$github_env"
+  if [[ -n "$github_env" ]]; then
+    echo "KERNEL_ABI=$built_abi" >> "$github_env"
+    echo "FIRMWARE_LAN_IP=$lan_ip" >> "$github_env"
+    echo "FIRMWARE_PASSWORD=$password" >> "$github_env"
+  fi
 }
 
 case "${1:-}" in
-  validate)
-    load_config "$2"
-    clone_count="$(grep -cEv '^[[:space:]]*(#|$)' "$3" || true)"
-    echo "lan_ip=$lan_ip password=$([[ -n "$password" ]] && echo set || echo unchanged) theme=${default_theme:-unchanged} abi=$check_official_abi git_packages=$clone_count"
-    ;;
   prepare) prepare "$2" "$3" "$4" ;;
   check-abi) check_abi "$2" "$3" "$4" "$5" "${6:-}" ;;
   *) fail "unknown command: ${1:-}" ;;
