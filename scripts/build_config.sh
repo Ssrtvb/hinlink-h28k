@@ -70,6 +70,10 @@ prepare() {
   load_config "$config"
   clone_packages "$source_dir" "$packages"
   apply_device_config "$source_dir"
+  if [[ "$check_official_abi" == true ]]; then
+    sed -i 's/CONFIG_BUILDBOT/CONFIG_ALL_KMODS/g' "$source_dir/include/feeds.mk"
+    test "$(grep -c 'CONFIG_ALL_KMODS' "$source_dir/include/feeds.mk")" -eq 2
+  fi
 }
 
 check_abi() {

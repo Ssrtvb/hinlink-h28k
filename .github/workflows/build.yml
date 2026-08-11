@@ -98,8 +98,6 @@ jobs:
             }
             git apply --3way "$patch"
           done
-          sed -i 's/CONFIG_BUILDBOT/CONFIG_ALL_KMODS/g' include/feeds.mk
-          test "$(grep -c 'CONFIG_ALL_KMODS' include/feeds.mk)" -eq 2
           git diff --stat
 
       - name: 更新 feeds
