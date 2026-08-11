@@ -29,6 +29,7 @@ load_config() {
   for octet in "${octets[@]}"; do
     (( 10#$octet <= 255 )) || fail "invalid lan_ip: $lan_ip"
   done
+  [[ -n "$password" ]] || fail "password is required"
   [[ -z "$default_theme" || "$default_theme" =~ ^[A-Za-z0-9_-]+$ ]] ||
     fail "invalid default_theme: $default_theme"
   [[ "$check_official_abi" == true || "$check_official_abi" == false ]] ||
@@ -58,11 +59,9 @@ apply_device_config() {
       "$source_dir/feeds/luci/modules/luci-base/root/etc/config/luci"
   fi
 
-  if [[ -n "$password" ]]; then
-    shadow="$source_dir/package/base-files/files/etc/shadow"
-    password_hash="$(printf '%s\n' "$password" | openssl passwd -6 -stdin)"
-    sed -i "s|^root:[^:]*:|root:${password_hash}:|" "$shadow"
-  fi
+  shadow="$source_dir/package/base-files/files/etc/shadow"
+  password_hash="$(printf '%s\n' "$password" | openssl passwd -6 -stdin)"
+  sed -i "s|^root:[^:]*:|root:${password_hash}:|" "$shadow"
 }
 
 prepare() {
