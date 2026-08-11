@@ -92,8 +92,14 @@ check_abi() {
       | jq -r '.packages.kernel')"
     official_abi="$(sed -nE 's/.*~([0-9a-f]{32})-r[0-9]+/\1/p' <<< "$official_kernel")"
     [[ "$built_abi" == "$official_abi" ]] || fail "kernel ABI does not match official release"
-    distfeeds="$(grep -rlE "/targets/rockchip/armv8/kmods/[^/]+-${built_abi}/packages\\.adb$" \
-      "$source_dir/staging_dir" "$source_dir/build_dir" 2>/dev/null | head -1)"
+    distfeeds="$(find "$source_dir/staging_dir" "$source_dir/build_dir" \
+      -path '*/etc/apk/repositories.d/distfeeds.list' -print 2>/dev/null \
+      | while read -r file; do
+          grep -Eq "/targets/rockchip/armv8/kmods/[^/]+-${built_abi}/packages\\.adb$" "$file" && {
+            echo "$file"
+            break
+          }
+        done)"
     [[ -n "$distfeeds" ]] || fail "official kmods repository is missing"
     echo "official_abi=$official_abi"
   else
