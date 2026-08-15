@@ -1,0 +1,5 @@
+3e377c2a6bbfbf9fbfae0508ed17d371fb8a76b285ddb3ca7b18751bc8d47332  ./0010-rockchip-add-HINLINK-H28K-U-Boot-support.patch
+33acd69e24eb5df843f2fbd7e89016a704f557160ae20e357c7a55328d590ce2  ./0020-rockchip-add-HINLINK-H28K-device-tree.patch
+22e5d039c83716b14322a2c7eef434ab85cf0d96f90c6bdaec21c0b77e08dbe0  ./0030-rockchip-add-HINLINK-H28K-board-defaults.patch
+d987328d0fc9cd25d0a5e7112c08d48eb726fd488380e3f5f80b112e4ecdbed9  ./0040-rockchip-add-HINLINK-H28K-image.patch
+5e64e1dd2bf083f13ecc3bcb662e80d708704882715aea4094cdbcb80e7b4183  ./0050-rockchip-configure-HINLINK-H28K-RJ45-LEDs.patch

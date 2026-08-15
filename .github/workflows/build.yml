@@ -57,27 +57,13 @@ jobs:
             python3-pyelftools qemu-utils re2c rsync scons squashfs-tools subversion swig \
             texinfo uglifyjs upx-ucl unzip wget xmlto xxd zlib1g-dev zstd jq
 
-      - name: 选择最新正式版
+      - name: 选择 ImmortalWrt 版本
         id: release
         run: |
           set -eu
-          UPSTREAM=https://github.com/immortalwrt/immortalwrt.git
-          RELEASE_TAG=""
-          for tag in $(git ls-remote --tags --refs "$UPSTREAM" 'refs/tags/v*' \
-            | awk -F/ '$3 ~ /^v[0-9]+\.[0-9]+\.[0-9]+$/ { print $3 }' \
-            | sort -Vr); do
-            version="${tag#v}"
-            buildinfo="https://downloads.immortalwrt.org/releases/${version}/targets/rockchip/armv8/config.buildinfo"
-            if curl -fsI "$buildinfo" >/dev/null; then
-              RELEASE_TAG="$tag"
-              break
-            fi
-          done
-          test -n "$RELEASE_TAG"
-          RELEASE_VERSION="${RELEASE_TAG#v}"
-          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
-          echo "version=$RELEASE_VERSION" >> "$GITHUB_OUTPUT"
-          echo "Latest stable release: $RELEASE_TAG"
+          bash "$GITHUB_WORKSPACE/scripts/select_release.sh" \
+            "$GITHUB_WORKSPACE/config/firmware.conf" \
+            "$GITHUB_OUTPUT"
 
       - name: 克隆正式版源码
         run: |
@@ -86,19 +72,12 @@ jobs:
 
       - name: 应用 HINLINK H28K 补丁
         working-directory: source
+        env:
+          PATCH_SERIES: ${{ steps.release.outputs.series }}
         run: |
           set -eu
-          for patch in "$GITHUB_WORKSPACE"/patches/*.patch; do
-            echo "=== Applying patch: $(basename "$patch") ==="
-            git apply --check --3way "$patch" || {
-              echo "Patch check failed: $patch"
-              git apply --reject "$patch" || true
-              find . -name '*.rej' -print -exec cat {} \;
-              exit 1
-            }
-            git apply --3way "$patch"
-          done
-          git diff --stat
+          bash "$GITHUB_WORKSPACE/scripts/apply_patches.sh" \
+            . "$GITHUB_WORKSPACE/patches/$PATCH_SERIES"
 
       - name: 更新 feeds
         working-directory: source
@@ -121,25 +100,17 @@ jobs:
             "$GITHUB_WORKSPACE/config/firmware.conf" \
             "$GITHUB_WORKSPACE/config/packages.conf"
 
-      - name: 提取官方内核配置
+      - name: 按需提取官方内核配置
         working-directory: source
         env:
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
         run: |
           set -eu
-          BUILDINFO_URL="https://downloads.immortalwrt.org/releases/${RELEASE_VERSION}/targets/rockchip/armv8"
-          curl -fsSL "$BUILDINFO_URL/config.buildinfo" -o .config.buildinfo
-          awk '
-            /^CONFIG_ALL_KMODS=y$/ ||
-            /^CONFIG_DEVEL=y$/ ||
-            (/^CONFIG_KERNEL_[A-Za-z0-9_]+=/ &&
-              $0 !~ /^CONFIG_KERNEL_BUILD_(DOMAIN|USER)=/) ||
-            /^# CONFIG_KERNEL_[A-Za-z0-9_]+ is not set$/
-          ' .config.buildinfo > .config.official
-          grep -q '^CONFIG_ALL_KMODS=y$' .config.official
-          grep -q '^CONFIG_DEVEL=y$' .config.official
-          cat .config.official "$GITHUB_WORKSPACE/config/hinlink-h28k.config" > .config
-          make defconfig
+          bash "$GITHUB_WORKSPACE/scripts/prepare_kernel_config.sh" \
+            . \
+            "$GITHUB_WORKSPACE/config/firmware.conf" \
+            "$RELEASE_VERSION" \
+            "$GITHUB_WORKSPACE/config/hinlink-h28k.config"
 
       - name: 恢复源码缓存
         id: source-cache

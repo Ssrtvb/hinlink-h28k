@@ -1,0 +1,8 @@
+0001-rockchip-backport-RK3528-rkbin-support.patch
+0002-rockchip-backport-RK3528-U-Boot-support.patch
+0003-rockchip-backport-RK3528-kernel-and-image-support.patch
+0010-rockchip-add-HINLINK-H28K-U-Boot-support.patch
+0020-rockchip-add-HINLINK-H28K-device-tree.patch
+0030-rockchip-add-HINLINK-H28K-board-defaults.patch
+0040-rockchip-add-HINLINK-H28K-image.patch
+0050-rockchip-configure-HINLINK-H28K-RJ45-LEDs.patch

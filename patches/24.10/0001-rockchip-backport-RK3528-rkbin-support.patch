@@ -1,0 +1,39 @@
+diff --git a/package/boot/arm-trusted-firmware-rockchip/Makefile b/package/boot/arm-trusted-firmware-rockchip/Makefile
+index 94a4ab8e98b09c1ad55ae40269b331a5644cc837..69588410cbf29f1f57dea8867b0dabb9e42b2c26 100644
+--- a/package/boot/arm-trusted-firmware-rockchip/Makefile
++++ b/package/boot/arm-trusted-firmware-rockchip/Makefile
+@@ -51,6 +51,12 @@ define Trusted-Firmware-A/rk3399
+   LOADER:=rk33/$(RK3399_LOADER)
+ endef
+ 
++define Trusted-Firmware-A/rk3528
++  BUILD_SUBTARGET:=armv8
++  ATF:=rk35/$(RK3528_ATF)
++  TPL:=rk35/$(RK3528_TPL)
++endef
++
+ define Trusted-Firmware-A/rk3566
+   BUILD_SUBTARGET:=armv8
+   ATF:=rk35/$(RK3566_ATF)
+@@ -81,6 +87,7 @@ TFA_TARGETS:= \
+ 	rk3308-rock-pi-s \
+ 	rk3328 \
+ 	rk3399 \
++	rk3528 \
+ 	rk3566 \
+ 	rk3568 \
+ 	rk3568-e25 \
+diff --git a/package/boot/arm-trusted-firmware-rockchip/atf-version.mk b/package/boot/arm-trusted-firmware-rockchip/atf-version.mk
+index 9e25a80ffe9064f79c2c3699998a905d2be2e93d..b08dd5d5ea15d8b59618db9aeee3ab11ba81d8a3 100644
+--- a/package/boot/arm-trusted-firmware-rockchip/atf-version.mk
++++ b/package/boot/arm-trusted-firmware-rockchip/atf-version.mk
+@@ -10,6 +10,9 @@ RK3399_ATF:=rk3399_bl31_v1.36.elf
+ RK3399_TPL:=rk3399_ddr_800MHz_v1.30.bin
+ RK3399_LOADER:=rk3399_miniloader_v1.30.bin
+ 
++RK3528_ATF:=rk3528_bl31_v1.17.elf
++RK3528_TPL:=rk3528_ddr_1056MHz_v1.09.bin
++
+ RK3566_ATF:=rk3568_bl31_v1.44.elf
+ RK3566_TPL:=rk3566_ddr_1056MHz_v1.21.bin
+ 
