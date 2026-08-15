@@ -36,7 +36,7 @@ password=your-password
 default_theme=fluent
 ```
 
-构建时使用 H28K 内核配置，并将内核 ABI 固定为所选版本的官方 ABI；不会提取官方内核配置或执行构建后 ABI 比对。
+构建时使用 H28K 内核配置，将内核 ABI 固定为所选版本的官方 ABI，并写入对应的官方 kmod 软件源；不会提取官方内核配置或执行构建后 ABI 比对。
 该操作只覆盖 ABI 标识，不验证官方 kmod 与回移内核的二进制兼容性。
 
 `config/packages.conf` 每行定义一个额外的 `git clone` 软件包；`config/hinlink-h28k.config` 保存目标、软件包和分区配置。
@@ -50,7 +50,7 @@ default_theme=fluent
 | `scripts/select_release.sh` | 选择 ImmortalWrt 精确版本或系列最新版 |
 | `scripts/apply_patches.sh` | 应用版本目录中的补丁 |
 | `scripts/prepare_kernel_config.sh` | 使用 H28K 配置生成 `.config` |
-| `scripts/force_kernel_abi.sh` | 将内核 ABI 固定为官方值 |
+| `scripts/configure_official_kernel.sh` | 固定官方 ABI 并写入 kmod 软件源 |
 | `scripts/build_config.sh` | 注入固件参数并克隆额外软件包 |
 
 ## 默认组件

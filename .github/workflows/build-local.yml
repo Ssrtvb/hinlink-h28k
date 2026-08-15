@@ -63,11 +63,14 @@ jobs:
           bash "$GITHUB_WORKSPACE/scripts/prepare_kernel_config.sh" \
             . "$GITHUB_WORKSPACE/config/hinlink-h28k.config"
 
-      - name: 固定官方内核 ABI
+      - name: 配置官方内核 ABI 和 kmod 源
         working-directory: source
         run: |
-          bash "$GITHUB_WORKSPACE/scripts/force_kernel_abi.sh" \
-            . "${{ steps.release.outputs.kernel_abi }}"
+          bash "$GITHUB_WORKSPACE/scripts/configure_official_kernel.sh" \
+            . \
+            "${{ steps.release.outputs.version }}" \
+            "${{ steps.release.outputs.series }}" \
+            "${{ steps.release.outputs.kernel_kmods }}"
 
       - name: 下载源码包
         working-directory: source

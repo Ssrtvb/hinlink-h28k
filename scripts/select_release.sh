@@ -6,14 +6,14 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=./config.sh
 source "$SCRIPT_DIR/config.sh"
 
-resolve_official_abi() {
-  local version="$1" abi
-  abi="$(curl -fsSL \
+resolve_official_kmods() {
+  local version="$1" kmods
+  kmods="$(curl -fsSL \
     "https://downloads.immortalwrt.org/releases/$version/targets/rockchip/armv8/kmods/" \
-    | sed -nE 's#.*href="[^"]*-([0-9a-f]{32})/".*#\1#p' \
+    | sed -nE 's#.*href="([^"]*-[0-9a-f]{32})/".*#\1#p' \
     | head -n 1)"
-  [[ "$abi" =~ ^[0-9a-f]{32}$ ]] || return 1
-  printf '%s\n' "$abi"
+  [[ "$kmods" =~ -[0-9a-f]{32}$ ]] || return 1
+  printf '%s\n' "$kmods"
 }
 
 config_file="${1:-}"
@@ -34,8 +34,8 @@ elif [[ "$requested_version" =~ ^(24\.10|25\.12)\.[0-9]+$ ]]; then
   release_tag="v$release_version"
   git ls-remote --exit-code --tags --refs "$upstream" "refs/tags/$release_tag" >/dev/null ||
     fail "upstream release tag not found: $release_tag"
-  kernel_abi="$(resolve_official_abi "$release_version")" ||
-    fail "official kernel ABI not found for $release_version"
+  kernel_kmods="$(resolve_official_kmods "$release_version")" ||
+    fail "official kmods not found for $release_version"
 else
   fail "unsupported release version or series: $release_version"
 fi
@@ -47,7 +47,7 @@ if [[ -z "$release_tag" ]]; then
       '$3 ~ /^v[0-9]+\.[0-9]+\.[0-9]+$/ && index($3, prefix) == 1 { print $3 }' \
     | sort -Vr); do
     version="${tag#v}"
-    if kernel_abi="$(resolve_official_abi "$version")"; then
+    if kernel_kmods="$(resolve_official_kmods "$version")"; then
       release_tag="$tag"
       release_version="$version"
       break
@@ -55,12 +55,14 @@ if [[ -z "$release_tag" ]]; then
   done
   [[ -n "$release_tag" ]] || fail "no usable $release_series release was found"
 fi
+kernel_abi="${kernel_kmods##*-}"
 
 {
   echo "series=$release_series"
   echo "tag=$release_tag"
   echo "version=$release_version"
   echo "kernel_abi=$kernel_abi"
+  echo "kernel_kmods=$kernel_kmods"
 } >> "$github_output"
 
 echo "Selected ImmortalWrt release: $release_tag (ABI $kernel_abi)"
