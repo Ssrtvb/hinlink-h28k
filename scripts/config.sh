@@ -4,20 +4,11 @@
 
 fail() { echo "error: $*" >&2; exit 1; }
 
-read_config_value() {
-  local file="$1" wanted="$2"
-  awk -F= -v wanted="$wanted" '
-    {
-      key=$1
-      gsub(/[[:space:]]/, "", key)
-      if (key != wanted) next
-      value=$2
-      sub(/[[:space:]]*#.*/, "", value)
-      gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
-      print value
-      exit
-    }
-  ' "$file"
+trim() {
+  local value="$1"
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+  printf '%s' "$value"
 }
 
 load_firmware_config() {
@@ -32,9 +23,12 @@ load_firmware_config() {
   check_official_abi=true
 
   while IFS='=' read -r key value || [[ -n "$key" ]]; do
-    key="${key%$'\r'}"
-    value="${value%$'\r'}"
-    [[ -z "$key" || "$key" =~ ^[[:space:]]*# ]] && continue
+    key="$(trim "${key%$'\r'}")"
+    value="$(trim "${value%$'\r'}")"
+    [[ -z "$key" || "$key" == \#* ]] && continue
+    if [[ "$value" =~ ^(.*)[[:space:]]+#.*$ ]]; then
+      value="$(trim "${BASH_REMATCH[1]}")"
+    fi
     case "$key" in
       release_version) release_version="$value" ;;
       lan_ip) lan_ip="$value" ;;

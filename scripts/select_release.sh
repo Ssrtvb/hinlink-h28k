@@ -10,10 +10,9 @@ config_file="${1:-}"
 github_output="${2:-}"
 [[ -n "$config_file" && -n "$github_output" ]] ||
   fail "usage: $0 <firmware.conf> <github-output>"
-[[ -f "$config_file" ]] || fail "config file not found: $config_file"
-
 upstream=https://github.com/immortalwrt/immortalwrt.git
-requested_version="$(read_config_value "$config_file" release_version)"
+load_firmware_config "$config_file"
+requested_version="$release_version"
 
 release_tag=""
 if [[ -n "$requested_version" ]]; then
@@ -26,7 +25,7 @@ if [[ -n "$requested_version" ]]; then
   git ls-remote --exit-code --tags --refs "$upstream" "refs/tags/$release_tag" >/dev/null ||
     fail "upstream release tag not found: $release_tag"
   buildinfo="https://downloads.immortalwrt.org/releases/${release_version}/targets/rockchip/armv8/config.buildinfo"
-  curl -fsI "$buildinfo" >/dev/null ||
+  curl -fsSL -o /dev/null "$buildinfo" ||
     fail "official buildinfo not found: $buildinfo"
 else
   release_series='25.12'
@@ -37,7 +36,7 @@ else
     | sort -Vr); do
     version="${tag#v}"
     buildinfo="https://downloads.immortalwrt.org/releases/${version}/targets/rockchip/armv8/config.buildinfo"
-    if curl -fsI "$buildinfo" >/dev/null; then
+    if curl -fsSL -o /dev/null "$buildinfo"; then
       release_tag="$tag"
       release_version="$version"
       break

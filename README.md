@@ -46,6 +46,7 @@ check_official_abi=true
 | 脚本 | 职责 |
 | --- | --- |
 | `scripts/config.sh` | 共享配置读取和校验 |
+| `scripts/install_dependencies.sh` | 安装编译依赖 |
 | `scripts/select_release.sh` | 选择 ImmortalWrt 精确版本或系列最新版 |
 | `scripts/apply_patches.sh` | 应用版本目录中的补丁 |
 | `scripts/prepare_kernel_config.sh` | 按 ABI 开关准备 `.config` |

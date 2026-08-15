@@ -13,10 +13,9 @@ device_config="${4:-}"
 [[ -n "$source_dir" && -n "$config_file" && -n "$release_version" && -n "$device_config" ]] ||
   fail "usage: $0 <source-dir> <firmware.conf> <release-version> <device-config>"
 [[ -d "$source_dir" ]] || fail "source directory not found: $source_dir"
-[[ -f "$config_file" ]] || fail "config file not found: $config_file"
 [[ -f "$device_config" ]] || fail "device config not found: $device_config"
 
-check_official_abi="$(read_config_value "$config_file" check_official_abi)"
+load_firmware_config "$config_file"
 
 cd "$source_dir"
 case "$check_official_abi" in
