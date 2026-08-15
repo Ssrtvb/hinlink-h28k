@@ -40,6 +40,7 @@ default_theme=fluent
 该操作只覆盖 ABI 标识，不验证官方 kmod 与回移内核的二进制兼容性。
 
 `config/packages.conf` 每行定义一个额外的 `git clone` 软件包；`config/hinlink-h28k.config` 保存目标、软件包和分区配置。
+构建时使用所选正式版 `feeds.buildinfo` 锁定的官方 feeds 提交。
 
 ## 构建脚本
 
@@ -49,6 +50,7 @@ default_theme=fluent
 | `scripts/install_dependencies.sh` | 安装编译依赖 |
 | `scripts/select_release.sh` | 选择 ImmortalWrt 精确版本或系列最新版 |
 | `scripts/apply_patches.sh` | 应用版本目录中的补丁 |
+| `scripts/update_feeds.sh` | 使用所选正式版的官方 feeds 并安装软件包索引 |
 | `scripts/prepare_kernel_config.sh` | 使用 H28K 配置生成 `.config` |
 | `scripts/configure_official_kernel.sh` | 固定官方 ABI 并写入 kmod 软件源 |
 | `scripts/build_config.sh` | 注入固件参数并克隆额外软件包 |

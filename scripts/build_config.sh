@@ -39,24 +39,15 @@ apply_device_config() {
   sed -i "s|^root:[^:]*:|root:${password_hash}:|" "$shadow"
 }
 
-write_github_env() {
-  local github_env="$1"
-  [[ -n "$github_env" ]] || return 0
-  {
-    echo "FIRMWARE_LAN_IP=$lan_ip"
-    echo "FIRMWARE_PASSWORD=$password"
-  } >> "$github_env"
-}
-
 source_dir="${1:-}"
 config_file="${2:-}"
 packages_file="${3:-}"
 github_env="${4:-}"
-[[ -n "$source_dir" && -n "$config_file" && -n "$packages_file" ]] ||
-  fail "usage: $0 <source-dir> <firmware.conf> <packages.conf> [github-env]"
+[[ -n "$source_dir" && -n "$config_file" && -n "$packages_file" && -n "$github_env" ]] ||
+  fail "usage: $0 <source-dir> <firmware.conf> <packages.conf> <github-env>"
 [[ -d "$source_dir" ]] || fail "source directory not found: $source_dir"
 
 load_firmware_config "$config_file"
 clone_extra_packages "$source_dir" "$packages_file"
 apply_device_config "$source_dir" "$lan_ip" "$password" "$default_theme"
-write_github_env "$github_env"
+printf 'FIRMWARE_LAN_IP=%s\nFIRMWARE_PASSWORD=%s\n' "$lan_ip" "$password" >> "$github_env"

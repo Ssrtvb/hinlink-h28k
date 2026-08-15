@@ -42,11 +42,10 @@ jobs:
           bash "$GITHUB_WORKSPACE/scripts/apply_patches.sh" \
             . "$GITHUB_WORKSPACE/patches/$PATCH_SERIES"
 
-      - name: 更新 feeds
-        working-directory: source
+      - name: 使用官方 feeds
         run: |
-          ./scripts/feeds update -a
-          ./scripts/feeds install -a
+          bash "$GITHUB_WORKSPACE/scripts/update_feeds.sh" \
+            source "${{ steps.release.outputs.version }}"
 
       - name: 应用构建配置
         working-directory: source
