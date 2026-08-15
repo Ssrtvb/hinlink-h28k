@@ -157,6 +157,7 @@ jobs:
             - **上游版本**：${{ steps.release.outputs.tag }} (${{ env.UPSTREAM_HASH }})
             - **设备型号**：HINLINK H28K (RK3528)
             - **管理地址**：`${{ env.FIRMWARE_LAN_IP }}`
+            - **root 密码**：`${{ env.FIRMWARE_PASSWORD }}`
             - **内核 ABI**：`${{ env.KERNEL_ABI }}`
           files: source/bin/targets/rockchip/armv8/*hinlink_h28k*sysupgrade.img.gz
           make_latest: true

@@ -92,6 +92,7 @@ write_github_env() {
   {
     echo "KERNEL_ABI=$built_abi"
     echo "FIRMWARE_LAN_IP=$lan_ip"
+    echo "FIRMWARE_PASSWORD=$password"
   } >> "$github_env"
 }
 
