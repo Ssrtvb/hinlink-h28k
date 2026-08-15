@@ -41,17 +41,6 @@ check_official_abi=true
 
 `config/packages.conf` 每行定义一个额外的 `git clone` 软件包；`config/hinlink-h28k.config` 保存目标、软件包和分区配置。
 
-> `password` 会在编译时写入固件，请勿在公开仓库中使用真实生产密码。
-
-## GitHub Actions
-
-- `build.yml`：GitHub-hosted runner 每周自动构建，也支持手动触发。
-- `build-local.yml`：在带有 `h28k-builder` 标签的自托管 runner 上手动构建。
-
-两条工作流都会：选择版本 → 应用对应补丁 → 更新 feeds → 准备内核配置 → 编译固件 → 校验 ABI（如启用）→ 上传 Artifact 和 Release。
-
-手动触发时只需要选择是否使用源码缓存；构建版本由 `config/firmware.conf` 控制。
-
 ## 构建脚本
 
 | 脚本 | 职责 |
