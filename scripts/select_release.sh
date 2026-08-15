@@ -12,23 +12,26 @@ github_output="${2:-}"
   fail "usage: $0 <firmware.conf> <github-output>"
 upstream=https://github.com/immortalwrt/immortalwrt.git
 load_firmware_config "$config_file"
-requested_version="$release_version"
+requested_version="${release_version#v}"
+[[ -n "$requested_version" ]] || fail "release_version must be 24.10, 25.12, or an exact supported version"
 
 release_tag=""
-if [[ -n "$requested_version" ]]; then
-  release_version="${requested_version#v}"
-  [[ "$release_version" =~ ^(24\.10|25\.12)\.[0-9]+$ ]] ||
-    fail "unsupported exact release version: $requested_version"
-
-  release_tag="v$release_version"
+if [[ "$requested_version" =~ ^(24\.10|25\.12)$ ]]; then
+  release_series="$requested_version"
+elif [[ "$requested_version" =~ ^(24\.10|25\.12)\.[0-9]+$ ]]; then
+  release_version="$requested_version"
   release_series="${release_version%.*}"
+  release_tag="v$release_version"
   git ls-remote --exit-code --tags --refs "$upstream" "refs/tags/$release_tag" >/dev/null ||
     fail "upstream release tag not found: $release_tag"
   buildinfo="https://downloads.immortalwrt.org/releases/${release_version}/targets/rockchip/armv8/config.buildinfo"
   curl -fsSL -o /dev/null "$buildinfo" ||
     fail "official buildinfo not found: $buildinfo"
 else
-  release_series='25.12'
+  fail "unsupported release version or series: $release_version"
+fi
+
+if [[ -z "$release_tag" ]]; then
   release_prefix="v${release_series}."
   for tag in $(git ls-remote --tags --refs "$upstream" 'refs/tags/v*' \
     | awk -F/ -v prefix="$release_prefix" \

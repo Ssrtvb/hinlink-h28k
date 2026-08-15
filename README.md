@@ -15,17 +15,17 @@
 
 ## 版本配置
 
-编辑 [config/firmware.conf](config/firmware.conf) 中的 `release_version`：
+编辑 [config/firmware.conf](config/firmware.conf) 中的 `release_version`。填写系列号会自动选择该系列最新正式版：
 
 ```ini
-# 精确构建指定版本
-release_version=24.10.6
+# 自动选择最新 24.10.x
+release_version=24.10
 ```
 
-留空时，工作流会自动选择 `25.12.x` 系列最新正式版：
+填写完整版本号则固定构建指定版本：
 
 ```ini
-release_version=
+release_version=24.10.6
 ```
 
 同一文件还控制 LAN 地址、root 密码、默认 LuCI 主题和内核 ABI 校验：
