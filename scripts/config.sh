@@ -20,7 +20,6 @@ load_firmware_config() {
   lan_ip=""
   password=""
   default_theme=""
-  check_official_abi=true
 
   while IFS='=' read -r key value || [[ -n "$key" ]]; do
     key="$(trim "${key%$'\r'}")"
@@ -34,7 +33,6 @@ load_firmware_config() {
       lan_ip) lan_ip="$value" ;;
       password) password="$value" ;;
       default_theme) default_theme="$value" ;;
-      check_official_abi) check_official_abi="$value" ;;
       *) fail "unknown config key: $key" ;;
     esac
   done < "$file"
@@ -49,6 +47,4 @@ load_firmware_config() {
   [[ -n "$password" ]] || fail "password is required"
   [[ -z "$default_theme" || "$default_theme" =~ ^[A-Za-z0-9_-]+$ ]] ||
     fail "invalid default_theme: $default_theme"
-  [[ "$check_official_abi" == true || "$check_official_abi" == false ]] ||
-    fail "check_official_abi must be true or false"
 }

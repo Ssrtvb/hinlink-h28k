@@ -12,4 +12,4 @@ sudo apt-get install -y -qq \
   libtool libyaml-dev lld llvm lrzsz msmtp ninja-build openssl p7zip-full \
   patch pkgconf python3 python3-pip python3-ply python3-docutils \
   python3-pyelftools qemu-utils re2c rsync scons squashfs-tools subversion swig \
-  texinfo uglifyjs upx-ucl unzip wget xmlto xxd zlib1g-dev zstd jq
+  texinfo uglifyjs upx-ucl unzip wget xmlto xxd zlib1g-dev zstd

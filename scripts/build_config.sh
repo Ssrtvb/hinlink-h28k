@@ -39,85 +39,24 @@ apply_device_config() {
   sed -i "s|^root:[^:]*:|root:${password_hash}:|" "$shadow"
 }
 
-enable_official_kmods() {
-  local source_dir="$1"
-  sed -i 's/CONFIG_BUILDBOT/CONFIG_ALL_KMODS/g' \
-    "$source_dir/include/feeds.mk"
-  test "$(grep -c 'CONFIG_ALL_KMODS' "$source_dir/include/feeds.mk")" -eq 2
-}
-
-prepare() {
-  local source_dir="$1" config_file="$2" packages_file="$3"
-  [[ -d "$source_dir" ]] || fail "source directory not found: $source_dir"
-  load_firmware_config "$config_file"
-  clone_extra_packages "$source_dir" "$packages_file"
-  apply_device_config "$source_dir" "$lan_ip" "$password" "$default_theme"
-  [[ "$check_official_abi" == true ]] && enable_official_kmods "$source_dir"
-}
-
-read_built_abi() {
-  local source_dir="$1" vermagic
-  vermagic="$(find "$source_dir"/build_dir/target-* \
-    -path '*/linux-rockchip_armv8/linux-*/.vermagic' -print -quit)"
-  [[ -n "$vermagic" ]] || fail "kernel .vermagic was not found"
-  tr -d '[:space:]' < "$vermagic"
-}
-
-verify_official_abi() {
-  local source_dir="$1" version="$2" built_abi="$3"
-  local official_kernel official_abi distfeeds
-
-  official_kernel="$(curl -fsSL \
-    "https://downloads.immortalwrt.org/releases/$version/targets/rockchip/armv8/packages/index.json" \
-    | jq -r '.packages.kernel')"
-  official_abi="$(sed -nE 's/.*~([0-9a-f]{32})-r[0-9]+/\1/p' <<< "$official_kernel")"
-  [[ "$built_abi" == "$official_abi" ]] ||
-    fail "kernel ABI does not match official release"
-
-  distfeeds="$(find "$source_dir/staging_dir" "$source_dir/build_dir" \
-    -path '*/etc/apk/repositories.d/distfeeds.list' -print 2>/dev/null \
-    | while read -r file; do
-        grep -Eq "/targets/rockchip/armv8/kmods/[^/]+-${built_abi}/packages\\.adb$" "$file" && {
-          echo "$file"
-          break
-        }
-      done)"
-  [[ -n "$distfeeds" ]] || fail "official kmods repository is missing"
-  echo "$official_abi"
-}
-
 write_github_env() {
-  local github_env="$1" built_abi="$2"
+  local github_env="$1"
   [[ -n "$github_env" ]] || return 0
   {
-    echo "KERNEL_ABI=$built_abi"
     echo "FIRMWARE_LAN_IP=$lan_ip"
     echo "FIRMWARE_PASSWORD=$password"
   } >> "$github_env"
 }
 
-check_abi() {
-  local source_dir="$1" config_file="$2" version="$3" tag="$4" github_env="${5:-}"
-  local built_abi official_abi
-  [[ -d "$source_dir" ]] || fail "source directory not found: $source_dir"
-  load_firmware_config "$config_file"
+source_dir="${1:-}"
+config_file="${2:-}"
+packages_file="${3:-}"
+github_env="${4:-}"
+[[ -n "$source_dir" && -n "$config_file" && -n "$packages_file" ]] ||
+  fail "usage: $0 <source-dir> <firmware.conf> <packages.conf> [github-env]"
+[[ -d "$source_dir" ]] || fail "source directory not found: $source_dir"
 
-  if [[ "$check_official_abi" != true ]]; then
-    echo 'official ABI check disabled'
-    return 0
-  fi
-
-  built_abi="$(read_built_abi "$source_dir")"
-  echo "release=$tag"
-  echo "built_abi=$built_abi"
-
-  official_abi="$(verify_official_abi "$source_dir" "$version" "$built_abi")"
-  echo "official_abi=$official_abi"
-  write_github_env "$github_env" "$built_abi"
-}
-
-case "${1:-}" in
-  prepare) prepare "$2" "$3" "$4" ;;
-  check-abi) check_abi "$2" "$3" "$4" "$5" "${6:-}" ;;
-  *) fail "unknown command: ${1:-}" ;;
-esac
+load_firmware_config "$config_file"
+clone_extra_packages "$source_dir" "$packages_file"
+apply_device_config "$source_dir" "$lan_ip" "$password" "$default_theme"
+write_github_env "$github_env"

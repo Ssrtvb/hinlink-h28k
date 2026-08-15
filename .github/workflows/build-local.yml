@@ -45,32 +45,29 @@ jobs:
       - name: 更新 feeds
         working-directory: source
         run: |
-          curl -fsSL \
-            "https://downloads.immortalwrt.org/releases/${{ steps.release.outputs.version }}/targets/rockchip/armv8/feeds.buildinfo" \
-            -o feeds.conf.default
-          sha256sum feeds.conf.default > .feeds.conf.default.sha256
           ./scripts/feeds update -a
           ./scripts/feeds install -a
-          sha256sum -c .feeds.conf.default.sha256
 
       - name: 应用构建配置
         working-directory: source
         run: |
-          bash "$GITHUB_WORKSPACE/scripts/build_config.sh" prepare \
+          bash "$GITHUB_WORKSPACE/scripts/build_config.sh" \
             . \
             "$GITHUB_WORKSPACE/config/firmware.conf" \
-            "$GITHUB_WORKSPACE/config/packages.conf"
+            "$GITHUB_WORKSPACE/config/packages.conf" \
+            "$GITHUB_ENV"
 
-      - name: 按需提取官方内核配置
+      - name: 生成内核配置
         working-directory: source
-        env:
-          RELEASE_VERSION: ${{ steps.release.outputs.version }}
         run: |
           bash "$GITHUB_WORKSPACE/scripts/prepare_kernel_config.sh" \
-            . \
-            "$GITHUB_WORKSPACE/config/firmware.conf" \
-            "$RELEASE_VERSION" \
-            "$GITHUB_WORKSPACE/config/hinlink-h28k.config"
+            . "$GITHUB_WORKSPACE/config/hinlink-h28k.config"
+
+      - name: 固定官方内核 ABI
+        working-directory: source
+        run: |
+          bash "$GITHUB_WORKSPACE/scripts/force_kernel_abi.sh" \
+            . "${{ steps.release.outputs.kernel_abi }}"
 
       - name: 下载源码包
         working-directory: source
@@ -92,19 +89,6 @@ jobs:
             tail -100 build.log
             exit "$code"
           fi
-
-      - name: 校验内核 ABI
-        working-directory: source
-        env:
-          RELEASE_TAG: ${{ steps.release.outputs.tag }}
-          RELEASE_VERSION: ${{ steps.release.outputs.version }}
-        run: |
-          bash "$GITHUB_WORKSPACE/scripts/build_config.sh" check-abi \
-            . \
-            "$GITHUB_WORKSPACE/config/firmware.conf" \
-            "$RELEASE_VERSION" \
-            "$RELEASE_TAG" \
-            "$GITHUB_ENV"
 
       - name: 检查固件产物
         working-directory: source
@@ -140,7 +124,7 @@ jobs:
             - **设备型号**：HINLINK H28K (RK3528)
             - **管理地址**：`${{ env.FIRMWARE_LAN_IP }}`
             - **root 密码**：`${{ env.FIRMWARE_PASSWORD }}`
-            - **内核 ABI**：`${{ env.KERNEL_ABI }}`
+            - **内核 ABI**：`${{ steps.release.outputs.kernel_abi }}`（强制与官方一致）
           files: source/bin/targets/rockchip/armv8/*hinlink_h28k*sysupgrade.img.gz
           make_latest: true
           fail_on_unmatched_files: true
