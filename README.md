@@ -36,9 +36,6 @@ password=your-password
 default_theme=fluent
 ```
 
-构建时使用 H28K 内核配置，将内核 ABI 固定为所选版本的官方 ABI，并写入对应的官方 kmod 软件源；不会提取官方内核配置或执行构建后 ABI 比对。
-该操作只覆盖 ABI 标识，不验证官方 kmod 与回移内核的二进制兼容性。
-
 `config/packages.conf` 每行定义一个额外的 `git clone` 软件包；`config/hinlink-h28k.config` 保存目标、软件包和分区配置。
 构建时使用所选正式版 `feeds.buildinfo` 锁定的官方 feeds 提交。
 
