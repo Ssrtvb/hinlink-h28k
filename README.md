@@ -1,70 +1,73 @@
-# HINLINK H28K 固件
+# HINLINK H28K ImmortalWrt 固件
 
-本仓库用于每周自动编译 ImmortalWrt HINLINK H28K 固件（RK3528）。
+本仓库用于自动编译 HINLINK H28K（Rockchip RK3528）固件。项目只保存编译配置、构建脚本和板级补丁，不包含 ImmortalWrt 上游源码。
 
-> 本项目仅供个人使用与配置留档，不面向通用环境，也不提供技术支持；请自行评估适配性。
+> 仅供个人使用和配置留档，请自行确认硬件适配性。
 
-## 补丁说明
+## 支持版本
 
-补丁按 ImmortalWrt 版本系列存放在 `patches/` 下：
+| ImmortalWrt 系列 | 补丁目录 | 内容 |
+| --- | --- | --- |
+| 24.10.x | `patches/24.10/` | 3 个 RK3528 基础回移补丁 + 5 个 H28K 板级补丁 |
+| 25.12.x | `patches/25.12/` | 5 个 H28K 板级补丁 |
 
-- `patches/25.12/`：ImmortalWrt 25.12.x H28K 板级补丁集。
-- `patches/24.10/`：ImmortalWrt 24.10.x 完整补丁集，包含 RK3528 基础回移和 H28K 板级补丁。
+补丁只会应用所选版本目录中的 `*.patch` 文件，并按文件名字典序执行。补丁文件名前的编号就是应用顺序。
 
-工作流只会应用所选版本系列目录中的 `*.patch` 文件，并按文件名的字典序
-依次执行。不同版本系列的补丁不要混放。
+## 版本配置
 
-| 补丁 | 说明 |
-| --- | --- |
-| `patches/25.12/0010-rockchip-add-HINLINK-H28K-U-Boot-support.patch` | 添加 U-Boot 目标、H28K DTS、U-Boot DTSI 和 defconfig。 |
-| `patches/25.12/0020-rockchip-add-HINLINK-H28K-device-tree.patch` | 添加 Linux H28K 设备树和系统 LED 别名。 |
-| `patches/25.12/0030-rockchip-add-HINLINK-H28K-board-defaults.patch` | 添加 LED 默认值、LAN/WAN 分配、MAC 地址生成和 IRQ affinity。 |
-| `patches/25.12/0040-rockchip-add-HINLINK-H28K-image.patch` | 添加 `hinlink_h28k` 固件设备配置。 |
-| `patches/25.12/0050-rockchip-configure-HINLINK-H28K-RJ45-LEDs.patch` | 配置两个 RJ45 接口的链路灯和活动灯。 |
+编辑 [config/firmware.conf](config/firmware.conf) 中的 `release_version`：
 
-24.10.x 目录另外包含 `0001`–`0003` 三个 RK3528 基础回移补丁；这些补丁只对
-24.10.x 应用，25.12.x 不需要。
+```ini
+# 精确构建指定版本
+release_version=24.10.6
+```
 
-## 自动编译
+留空时，工作流会自动选择 `25.12.x` 系列最新正式版：
 
-GitHub Actions 每周自动运行一次，也可以在 Actions 页面手动触发。版本由
-`config/firmware.conf` 中的 `release_version` 控制：填写精确版本号（例如
-`24.10.6`、`25.12.1`）时构建该版本；留空时构建 `25.12.x` 最新正式版，并自动
-选择对应的补丁目录。每次构建会：
+```ini
+release_version=
+```
 
-1. 选择指定的 `vX.Y.Z` 标签，或使用 `25.12.x` 系列中的最新正式版。
-2. 使用对应正式版的官方 `config.buildinfo`。
-3. 应用对应版本目录中的 HINLINK H28K 补丁。
-4. 加载固件参数和额外 Git 软件包。
-5. 编译完整固件并上传到 Artifacts 和 Releases。
+同一文件还控制 LAN 地址、root 密码、默认 LuCI 主题和内核 ABI 校验：
 
-## 构建配置
+```ini
+lan_ip=192.168.0.2
+password=your-password
+default_theme=fluent
+check_official_abi=true
+```
 
-所有可调整的构建配置放在 `config/`：
+将 `check_official_abi` 设为 `false` 时，会跳过官方 `config.buildinfo` 提取和 ABI/kmod 校验，但仍使用 H28K 配置生成 `.config`。
 
-| 文件 | 用途 |
-| --- | --- |
-| `firmware.conf` | 设置 ImmortalWrt 版本、LAN 地址、root 密码、默认主题和 ABI 校验开关。 |
-| `packages.conf` | 每行一条完整的 `git clone` 命令。 |
-| `hinlink-h28k.config` | H28K 目标、软件包和分区配置。 |
+`config/packages.conf` 每行定义一个额外的 `git clone` 软件包；`config/hinlink-h28k.config` 保存目标、软件包和分区配置。
 
-将 `firmware.conf` 中的 `check_official_abi` 设为 `false` 时，工作流会跳过官方
-`config.buildinfo` 的提取和 ABI/kmod 校验，但仍会使用 H28K 配置生成最终 `.config`。
+> `password` 会在编译时写入固件，请勿在公开仓库中使用真实生产密码。
+
+## GitHub Actions
+
+- `build.yml`：GitHub-hosted runner 每周自动构建，也支持手动触发。
+- `build-local.yml`：在带有 `h28k-builder` 标签的自托管 runner 上手动构建。
+
+两条工作流都会：选择版本 → 应用对应补丁 → 更新 feeds → 准备内核配置 → 编译固件 → 校验 ABI（如启用）→ 上传 Artifact 和 Release。
+
+手动触发时只需要选择是否使用源码缓存；构建版本由 `config/firmware.conf` 控制。
 
 ## 构建脚本
 
-- `scripts/config.sh`：共享配置读取和校验。
-- `scripts/select_release.sh`：读取版本配置并选择 ImmortalWrt 标签。
-- `scripts/apply_patches.sh`：按版本目录应用补丁。
-- `scripts/prepare_kernel_config.sh`：准备官方或本地内核配置。
-- `scripts/build_config.sh`：注入固件参数、克隆额外软件包并检查内核 ABI。
+| 脚本 | 职责 |
+| --- | --- |
+| `scripts/config.sh` | 共享配置读取和校验 |
+| `scripts/select_release.sh` | 选择 ImmortalWrt 精确版本或系列最新版 |
+| `scripts/apply_patches.sh` | 应用版本目录中的补丁 |
+| `scripts/prepare_kernel_config.sh` | 按 ABI 开关准备 `.config` |
+| `scripts/build_config.sh` | 注入固件参数、克隆软件包和检查 ABI |
 
-## 默认包含
+## 默认组件
 
-- Fluent LuCI 主题：`luci-theme-fluent`
-- Nikki：`luci-app-nikki`
-- MT7921U USB 无线网卡驱动：`kmod-mt7921u`
-- OpenSSH SFTP 服务：`openssh-sftp-server`
+- `luci-theme-fluent`
+- `luci-app-nikki`
+- `kmod-mt7921u`
+- `openssh-sftp-server`
 
 ## 设备信息
 

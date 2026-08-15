@@ -1,8 +1,0 @@
-a1c2d8ec927594798077a7c29b5284135c7227efd4052f2caf63548ff74edd13  ./0001-rockchip-backport-RK3528-rkbin-support.patch
-ae0ddb937d6faead49474e90086620f17a63af6fb4882b3a8de7462cd9928fc6  ./0002-rockchip-backport-RK3528-U-Boot-support.patch
-6fe7af35be273a44ade136627c9b83fc0d8d9e5d485bb1ad155f5b26c47e142b  ./0003-rockchip-backport-RK3528-kernel-and-image-support.patch
-0355b14ed239941e51c648d2f940b1059263b6afa580274c6c01e0b348005846  ./0010-rockchip-add-HINLINK-H28K-U-Boot-support.patch
-c6ff733d7d3ba907fe39b5c037e6e0c8280bea6a3397dfd7a22688d17aa71f39  ./0020-rockchip-add-HINLINK-H28K-device-tree.patch
-30f973f9904363680f550fffd22b14b22d76088f19ccda4d7c1d280a05940803  ./0030-rockchip-add-HINLINK-H28K-board-defaults.patch
-0f778c33f8e99edade49384cd031f75f13f070702a13350c7ee917eb74562e0f  ./0040-rockchip-add-HINLINK-H28K-image.patch
-42527e86d690b120925bab852f0476e66ebf25c09a8464ca6b9366f1f7c989f7  ./0050-rockchip-configure-HINLINK-H28K-RJ45-LEDs.patch
