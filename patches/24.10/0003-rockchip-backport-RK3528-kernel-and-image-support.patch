@@ -5051,19 +5051,11 @@ new file mode 100644
 index 0000000000000000000000000000000000000000..7f19e010f3a4e2bb1b19de651cf9956f1f5f854d
 --- /dev/null
 +++ b/target/linux/rockchip/patches-6.6/040-01-v6.15-pinctrl-rk3528.patch
-@@ -0,0 +1,239 @@
-+From 75aa71d1b0bf6031ab9bf3ecf1619f489716035f Mon Sep 17 00:00:00 2001
-+From: Steven Liu <steven.liu@rock-chips.com>
-+Date: Fri, 28 Feb 2025 06:40:09 +0000
+@@ -0,0 +1,231 @@
 +Subject: [PATCH] pinctrl: rockchip: Add support for RK3528
 +
 +Add gpio and pinctrl support for the 5 GPIO banks on RK3528.
 +
-+Signed-off-by: Steven Liu <steven.liu@rock-chips.com>
-+Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
-+Reviewed-by: Heiko Stuebner <heiko@sntech.de>
-+Link: https://lore.kernel.org/20250228064024.3200000-4-jonas@kwiboo.se
-+Signed-off-by: Linus Walleij <linus.walleij@linaro.org>
 +---
 + drivers/pinctrl/pinctrl-rockchip.c | 161 ++++++++++++++++++++++++++++-
 + drivers/pinctrl/pinctrl-rockchip.h |   1 +
@@ -5296,10 +5288,7 @@ new file mode 100644
 index 0000000000000000000000000000000000000000..f2a00afb97ea9ba2fe11363aa655803e5fd84d22
 --- /dev/null
 +++ b/target/linux/rockchip/patches-6.6/040-02-v6.15-saradc-rk3528.patch
-@@ -0,0 +1,57 @@
-+From b94d433859a4ea60214942ad9c9aee3d19286e77 Mon Sep 17 00:00:00 2001
-+From: Jonas Karlman <jonas@kwiboo.se>
-+Date: Thu, 27 Feb 2025 18:40:51 +0000
+@@ -0,0 +1,50 @@
 +Subject: [PATCH] iio: adc: rockchip_saradc: Add support for RK3528
 +
 +The Successive Approximation ADC (SARADC) in RK3528 uses the v2
@@ -5312,10 +5301,6 @@ index 0000000000000000000000000000000000000000..f2a00afb97ea9ba2fe11363aa655803e
 +Add support for the 4 channels of 10-bit resolution supported by SARADC
 +in RK3528.
 +
-+Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
-+Reviewed-by: Heiko Stuebner <heiko@sntech.de>
-+Link: https://patch.msgid.link/20250227184058.2964204-3-jonas@kwiboo.se
-+Signed-off-by: Jonathan Cameron <Jonathan.Cameron@huawei.com>
 +---
 + drivers/iio/adc/rockchip_saradc.c | 18 ++++++++++++++++++
 + 1 file changed, 18 insertions(+)
@@ -5359,10 +5344,7 @@ new file mode 100644
 index 0000000000000000000000000000000000000000..ece09a8b769c8023bdcb259c592670460ebd1865
 --- /dev/null
 +++ b/target/linux/rockchip/patches-6.6/041-01-v6.15-clk-rk3528.patch
-@@ -0,0 +1,73 @@
-+From b8d1b4152aba154e155f54231309f7305b807b27 Mon Sep 17 00:00:00 2001
-+From: Yao Zi <ziyao@disroot.org>
-+Date: Mon, 17 Feb 2025 06:11:44 +0000
+@@ -0,0 +1,67 @@
 +Subject: [PATCH] clk: rockchip: Add clock controller driver for RK3528 SoC
 +
 +Add clock tree definition for RK3528. Similar to previous Rockchip
@@ -5370,9 +5352,6 @@ index 0000000000000000000000000000000000000000..ece09a8b769c8023bdcb259c59267046
 +We omit the reset part for now since it's hard to test it without
 +support for other basic peripherals.
 +
-+Signed-off-by: Yao Zi <ziyao@disroot.org>
-+Link: https://lore.kernel.org/r/20250217061142.38480-8-ziyao@disroot.org
-+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
 +---
 + drivers/clk/rockchip/Kconfig  |  7 +++++++
 + drivers/clk/rockchip/Makefile |  1 +
@@ -5438,10 +5417,7 @@ new file mode 100644
 index 0000000000000000000000000000000000000000..49a105bedcd2c8f513c667983ba9d595354d7934
 --- /dev/null
 +++ b/target/linux/rockchip/patches-6.6/041-02-v6.15-clk-rk3528.patch
-@@ -0,0 +1,40 @@
-+From 8d0c1196fa08c30e957816e40a1855a4daa6bb42 Mon Sep 17 00:00:00 2001
-+From: Jonas Karlman <jonas@kwiboo.se>
-+Date: Thu, 27 Feb 2025 17:52:57 +0000
+@@ -0,0 +1,34 @@
 +Subject: [PATCH] clk: rockchip: rk3528: Add reset lookup table
 +
 +In the commit 5d0eb375e685 ("clk: rockchip: Add clock controller driver
@@ -5451,9 +5427,6 @@ index 0000000000000000000000000000000000000000..49a105bedcd2c8f513c667983ba9d595
 +Add a reset lookup table generated from the SRST symbols used by vendor
 +linux-6.1-stan-rkr5 kernel to complete support for the reset controller.
 +
-+Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
-+Link: https://lore.kernel.org/r/20250227175302.2950788-1-jonas@kwiboo.se
-+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
 +---
 + drivers/clk/rockchip/Makefile | 2 +-
 + drivers/clk/rockchip/clk.h    | 1 +
@@ -5484,10 +5457,7 @@ new file mode 100644
 index 0000000000000000000000000000000000000000..69c18feaa1548365325bb7fecf4fb86bfc5474d1
 --- /dev/null
 +++ b/target/linux/rockchip/patches-6.6/041-03-v6.15-clk-rk3528.patch
-@@ -0,0 +1,227 @@
-+From 9f87541cfda9e96315d4655b607ca719d4516b97 Mon Sep 17 00:00:00 2001
-+From: Nicolas Frattaroli <nicolas.frattaroli@collabora.com>
-+Date: Fri, 2 May 2025 13:03:08 +0200
+@@ -0,0 +1,221 @@
 +Subject: [PATCH] clk: rockchip: introduce auxiliary GRFs
 +
 +The MUXGRF clock branch type depends on having access to some sort of
@@ -5518,9 +5488,6 @@ index 0000000000000000000000000000000000000000..69c18feaa1548365325bb7fecf4fb86b
 +separate step, just to have a direct pointer to a regmap available
 +already.
 +
-+Signed-off-by: Nicolas Frattaroli <nicolas.frattaroli@collabora.com>
-+Link: https://lore.kernel.org/r/20250502-rk3576-sai-v3-2-376cef19dd7c@collabora.com
-+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
 +---
 + drivers/clk/rockchip/clk-rk3288.c |  2 +-
 + drivers/clk/rockchip/clk-rk3328.c |  6 +++---
@@ -5717,19 +5684,13 @@ new file mode 100644
 index 0000000000000000000000000000000000000000..843bfd3c4be5dadc1a760ff690c93e798ae0639b
 --- /dev/null
 +++ b/target/linux/rockchip/patches-6.6/041-04-v6.15-clk-rk3528.patch
-@@ -0,0 +1,54 @@
-+From 194c77de997183409a9f1a6aac5cb20cf86862c7 Mon Sep 17 00:00:00 2001
-+From: Yao Zi <ziyao@disroot.org>
-+Date: Mon, 17 Feb 2025 06:11:43 +0000
+@@ -0,0 +1,48 @@
 +Subject: [PATCH] clk: rockchip: Add PLL flag ROCKCHIP_PLL_FIXED_MODE
 +
 +RK3528 comes with a new PLL variant: its "PPLL", which mainly generates
 +clocks for the PCIe controller, operates in normal mode only. Let's
 +describe it with flag ROCKCHIP_PLL_FIXED_MODE and handle it in code.
 +
-+Signed-off-by: Yao Zi <ziyao@disroot.org>
-+Link: https://lore.kernel.org/r/20250217061142.38480-7-ziyao@disroot.org
-+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
 +---
 + drivers/clk/rockchip/clk-pll.c | 10 ++++++----
 + drivers/clk/rockchip/clk.h     |  2 ++
@@ -5777,19 +5738,13 @@ new file mode 100644
 index 0000000000000000000000000000000000000000..a3de7a606e484fc935ac2e50e48f273dac0c6efc
 --- /dev/null
 +++ b/target/linux/rockchip/patches-6.6/041-05-v6.15-clk-rk3528.patch
-@@ -0,0 +1,152 @@
-+From 26a1bfcbc92c8956f539320c3c20aa59355bbf85 Mon Sep 17 00:00:00 2001
-+From: Yao Zi <ziyao@disroot.org>
-+Date: Tue, 6 May 2025 09:22:03 +0000
+@@ -0,0 +1,146 @@
 +Subject: [PATCH] clk: rockchip: Support MMC clocks in GRF region
 +
 +Registers of MMC drive/sample clocks in Rockchip RV1106 and RK3528
 +locate in GRF regions. Adjust MMC clock code to support register
 +operations through regmap.
 +
-+Signed-off-by: Yao Zi <ziyao@disroot.org>
-+Link: https://lore.kernel.org/r/20250506092206.46143-3-ziyao@disroot.org
-+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
 +---
 + drivers/clk/rockchip/clk-mmc-phase.c | 24 ++++++++++++++++++++----
 + drivers/clk/rockchip/clk.c           | 12 +++++++++++-
@@ -5935,10 +5890,7 @@ new file mode 100644
 index 0000000000000000000000000000000000000000..3a46f3e975b53e453a2081420fd2daaf2156bf71
 --- /dev/null
 +++ b/target/linux/rockchip/patches-6.6/041-06-v6.15-clk-rk3528.patch
-@@ -0,0 +1,40 @@
-+From ad162e4d2a49c1da77dbee04972d4abe8b494ae2 Mon Sep 17 00:00:00 2001
-+From: Yao Zi <ziyao@disroot.org>
-+Date: Tue, 6 May 2025 09:22:04 +0000
+@@ -0,0 +1,34 @@
 +Subject: [PATCH] clk: rockchip: rk3528: Add SD/SDIO tuning clocks in GRF
 + region
 +
@@ -5948,9 +5900,6 @@ index 0000000000000000000000000000000000000000..3a46f3e975b53e453a2081420fd2daaf
 +
 +GRFs are looked up by compatible to simplify devicetree binding.
 +
-+Signed-off-by: Yao Zi <ziyao@disroot.org>
-+Link: https://lore.kernel.org/r/20250506092206.46143-4-ziyao@disroot.org
-+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
 +---
 + drivers/clk/rockchip/clk.h | 5 +++++
 + 1 file changed, 5 insertions(+)
@@ -5981,10 +5930,7 @@ new file mode 100644
 index 0000000000000000000000000000000000000000..7bd903792beac122c1b177acac12d70b931b41cd
 --- /dev/null
 +++ b/target/linux/rockchip/patches-6.6/042-01-v6.15-stmmac-rk3528.patch
-@@ -0,0 +1,166 @@
-+From c5de1767fc16cae1eaf7a4dd8051538fa5777418 Mon Sep 17 00:00:00 2001
-+From: David Wu <david.wu@rock-chips.com>
-+Date: Wed, 19 Mar 2025 21:44:06 +0000
+@@ -0,0 +1,159 @@
 +Subject: [PATCH] net: stmmac: dwmac-rk: Add GMAC support for RK3528
 +
 +Rockchip RK3528 has two Ethernet controllers based on Synopsys DWC
@@ -5992,10 +5938,6 @@ index 0000000000000000000000000000000000000000..7bd903792beac122c1b177acac12d70b
 +
 +Add initial support for the RK3528 GMAC variant.
 +
-+Signed-off-by: David Wu <david.wu@rock-chips.com>
-+Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
-+Link: https://patch.msgid.link/20250319214415.3086027-3-jonas@kwiboo.se
-+Signed-off-by: Jakub Kicinski <kuba@kernel.org>
 +---
 + .../net/ethernet/stmicro/stmmac/dwmac-rk.c    | 132 ++++++++++++++++++
 + 1 file changed, 132 insertions(+)
@@ -6153,10 +6095,7 @@ new file mode 100644
 index 0000000000000000000000000000000000000000..33b125ddf14bfe36a524a767059de00bb4fec0f6
 --- /dev/null
 +++ b/target/linux/rockchip/patches-6.6/043-01-pending-rk3528-combphy.patch
-@@ -0,0 +1,138 @@
-+From 95e628d99d5e10dab83accd774b1927c9606b1a7 Mon Sep 17 00:00:00 2001
-+From: jjm2473 <jjm2473@gmail.com>
-+Date: Tue, 17 Jun 2025 22:19:32 +0800
+@@ -0,0 +1,135 @@
 +Subject: [PATCH] phy/rockchip-naneng-combphy: supports rk3528
 +
 +---
@@ -6297,10 +6236,7 @@ new file mode 100644
 index 0000000000000000000000000000000000000000..6e1ed82711624de1fdb35c6f815766e686baf675
 --- /dev/null
 +++ b/target/linux/rockchip/patches-6.6/044-01-pci-dwc-round-up-num_ctrls.patch
-@@ -0,0 +1,46 @@
-+From b9e3578552eefaa1f90acdcab05cbdbd4c95c90c Mon Sep 17 00:00:00 2001
-+From: Shawn Lin <shawn.lin@rock-chips.com>
-+Date: Mon, 21 Nov 2022 15:17:47 +0800
+@@ -0,0 +1,41 @@
 +Subject: [PATCH] BACKPORT: FROMLIST: PCI: dwc: Round up num_ctrls if
 + num_vectors is less than MAX_MSI_IRQS_PER_CTRL
 +
@@ -6308,8 +6244,6 @@ index 0000000000000000000000000000000000000000..6e1ed82711624de1fdb35c6f815766e6
 +MSIs is less than MAX_MSI_IRQS_PER_CTRL. In this case, num_ctrls will be zero which
 +fails setting up MSI support. Fix it by rounding up num_ctrls to at least one.
 +
-+Signed-off-by: Shawn Lin <shawn.lin@rock-chips.com>
-+Link: https://lore.kernel.org/all/1669014996-177686-1-git-send-email-shawn.lin@rock-chips.com/
 +Change-Id: I88b69dd4eeed4464a8e48ca8bbe519aea1cafe6e
 +---
 + drivers/pci/controller/dwc/pcie-designware-host.c | 6 +++---
@@ -6349,10 +6283,7 @@ new file mode 100644
 index 0000000000000000000000000000000000000000..95842908c0c1b9659c77027b6f3acbfdf57fa66b
 --- /dev/null
 +++ b/target/linux/rockchip/patches-6.6/044-02-pci-dwc-rockchip-rk3528.patch
-@@ -0,0 +1,63 @@
-+From 7da114ad2d28bd6269407c3e94d56f2ba6669721 Mon Sep 17 00:00:00 2001
-+From: jjm2473 <jjm2473@gmail.com>
-+Date: Thu, 19 Jun 2025 13:14:57 +0800
+@@ -0,0 +1,60 @@
 +Subject: [PATCH] PCI: dw-rockchip: supports rk3528 pcie
 +
 +---
@@ -6418,10 +6349,7 @@ new file mode 100644
 index 0000000000000000000000000000000000000000..5a18112e782a85d07f500c75b22f6410c2726910
 --- /dev/null
 +++ b/target/linux/rockchip/patches-6.6/045-01-phy-inno-usb2-simplify-usbgrf-handling.patch
-@@ -0,0 +1,215 @@
-+From 48bfaa7e520b15d80bf55bf9776e17b88270243d Mon Sep 17 00:00:00 2001
-+From: Jonas Karlman <jonas@kwiboo.se>
-+Date: Wed, 23 Jul 2025 12:23:00 +0000
+@@ -0,0 +1,211 @@
 +Subject: [PATCH] phy: rockchip: inno-usb2: Simplify rockchip,usbgrf handling
 +
 +The logic to decide if usbgrf or grf should be used is more complex than
@@ -6435,7 +6363,6 @@ index 0000000000000000000000000000000000000000..5a18112e782a85d07f500c75b22f6410
 +The only expected change from this is that RK3528 can be supported
 +because of an addition of a of_property_present() check.
 +
-+Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
 +---
 + drivers/phy/rockchip/phy-rockchip-inno-usb2.c | 63 ++++++-------------
 + 1 file changed, 18 insertions(+), 45 deletions(-)
@@ -6639,10 +6566,7 @@ new file mode 100644
 index 0000000000000000000000000000000000000000..30c264e3b4a05652c44288d7f710fc84b1a0de4f
 --- /dev/null
 +++ b/target/linux/rockchip/patches-6.6/045-02-phy-inno-usb2-clkout_ctl_phy.patch
-@@ -0,0 +1,127 @@
-+From 3dbf8732bdb8449d6ea17c9fd78bef4ac4359aa0 Mon Sep 17 00:00:00 2001
-+From: Jonas Karlman <jonas@kwiboo.se>
-+Date: Wed, 23 Jul 2025 12:23:02 +0000
+@@ -0,0 +1,123 @@
 +Subject: [PATCH] phy: rockchip: inno-usb2: Add clkout_ctl_phy support
 +
 +The 480m clk is controlled using regs in the PHY address space and not
@@ -6651,7 +6575,6 @@ index 0000000000000000000000000000000000000000..30c264e3b4a05652c44288d7f710fc84
 +Add a clkout_ctl_phy usb2phy_reg to handle enable/disable of the 480m
 +clk on these SoCs.
 +
-+Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
 +---
 + drivers/phy/rockchip/phy-rockchip-inno-usb2.c | 47 +++++++++++++++----
 + 1 file changed, 38 insertions(+), 9 deletions(-)
@@ -6772,10 +6695,7 @@ new file mode 100644
 index 0000000000000000000000000000000000000000..e61fb5b72cc54eba68e084582b5fc42a5747b195
 --- /dev/null
 +++ b/target/linux/rockchip/patches-6.6/045-03-phy-inno-usb2-support-rk3528.patch
-@@ -0,0 +1,122 @@
-+From f6a28c5d2ddf9e8c38c02917776de53383d4739e Mon Sep 17 00:00:00 2001
-+From: Jianwei Zheng <jianwei.zheng@rock-chips.com>
-+Date: Wed, 23 Jul 2025 12:23:03 +0000
+@@ -0,0 +1,117 @@
 +Subject: [PATCH] phy: rockchip: inno-usb2: Add support for RK3528
 +
 +The RK3528 has a single USB2PHY with a otg and host port.
@@ -6795,8 +6715,6 @@ index 0000000000000000000000000000000000000000..e61fb5b72cc54eba68e084582b5fc42a
 +
 +This is based on vendor kernel linux-stan-6.1-rkr5 tag.
 +
-+Signed-off-by: Jianwei Zheng <jianwei.zheng@rock-chips.com>
-+Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
 +---
 + drivers/phy/rockchip/phy-rockchip-inno-usb2.c | 71 +++++++++++++++++++
 + 1 file changed, 71 insertions(+)
@@ -6900,15 +6818,11 @@ new file mode 100644
 index 0000000000000000000000000000000000000000..7f582f1d98d96aae11361cc6d7fba8288925ff3c
 --- /dev/null
 +++ b/target/linux/rockchip/patches-6.6/046-01-rockchip-thermal-support-rk3528.patch
-@@ -0,0 +1,191 @@
-+From 2679b127f6849aaf0f322b17109ec6a5c641a789 Mon Sep 17 00:00:00 2001
-+From: Shaohan Yao <shaohan.yao@rock-chips.com>
-+Date: Fri, 9 Sep 2022 14:34:08 +0800
+@@ -0,0 +1,187 @@
 +Subject: [PATCH] thermal: rockchip: Support the rk3528 SoC in thermal driver
 +
 +There are one Temperature Sensor on rk3528, channel 0 is for chip.
 +
-+Signed-off-by: Shaohan Yao <shaohan.yao@rock-chips.com>
 +Change-Id: Ib5bbb81615fe9fab80f26cdd2098cfb56746ca15
 +---
 + drivers/thermal/rockchip_thermal.c | 110 +++++++++++++++++++++++++++++
@@ -7097,18 +7011,11 @@ new file mode 100644
 index 0000000000000000000000000000000000000000..d235a4c2c129447d25fbedb0f033253bd3760e37
 --- /dev/null
 +++ b/target/linux/rockchip/patches-6.6/046-02-v6.17-dt-bindings-power-rockchip-Add-support-for-RK3528.patch
-@@ -0,0 +1,49 @@
-+From 8358102806c619d8d6c814010173617fb374b77e Mon Sep 17 00:00:00 2001
-+From: Jonas Karlman <jonas@kwiboo.se>
-+Date: Sun, 18 May 2025 22:06:48 +0000
+@@ -0,0 +1,42 @@
 +Subject: [PATCH] dt-bindings: power: rockchip: Add support for RK3528
 +
 +Add the compatible string and power domains for RK3528 SoC.
 +
-+Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
-+Acked-by: Conor Dooley <conor.dooley@microchip.com>
-+Link: https://lore.kernel.org/r/20250518220707.669515-2-jonas@kwiboo.se
-+Signed-off-by: Ulf Hansson <ulf.hansson@linaro.org>
 +---
 + .../power/rockchip,power-controller.yaml      |  1 +
 + .../dt-bindings/power/rockchip,rk3528-power.h | 19 +++++++++++++++++++
@@ -7152,10 +7059,7 @@ new file mode 100644
 index 0000000000000000000000000000000000000000..f9fb2dff1a7b19b490400cd961c35546615ec3a4
 --- /dev/null
 +++ b/target/linux/rockchip/patches-6.6/046-03-v6.17-pmdomain-rockchip-Add-support-for-RK3528.patch
-@@ -0,0 +1,81 @@
-+From 3068b386232f0a7d84da6d1366dbd0b7926c5652 Mon Sep 17 00:00:00 2001
-+From: Jonas Karlman <jonas@kwiboo.se>
-+Date: Sun, 18 May 2025 22:06:49 +0000
+@@ -0,0 +1,75 @@
 +Subject: [PATCH] pmdomain: rockchip: Add support for RK3528
 +
 +Add configuration and power domains for RK3528 SoC.
@@ -7163,9 +7067,6 @@ index 0000000000000000000000000000000000000000..f9fb2dff1a7b19b490400cd961c35546
 +Only PD_GPU can fully be powered down. PD_RKVDEC, PD_RKVENC, PD_VO and
 +PD_VPU are used by miscellaneous devices in RK3528.
 +
-+Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
-+Link: https://lore.kernel.org/r/20250518220707.669515-3-jonas@kwiboo.se
-+Signed-off-by: Ulf Hansson <ulf.hansson@linaro.org>
 +---
 + drivers/pmdomain/rockchip/pm-domains.c | 27 ++++++++++++++++++++++++++
 + 1 file changed, 27 insertions(+)
