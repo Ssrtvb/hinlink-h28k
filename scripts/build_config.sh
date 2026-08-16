@@ -39,15 +39,67 @@ apply_device_config() {
   sed -i "s|^root:[^:]*:|root:${password_hash}:|" "$shadow"
 }
 
-source_dir="${1:-}"
-config_file="${2:-}"
-packages_file="${3:-}"
-github_env="${4:-}"
-[[ -n "$source_dir" && -n "$config_file" && -n "$packages_file" && -n "$github_env" ]] ||
-  fail "usage: $0 <source-dir> <firmware.conf> <packages.conf> <github-env>"
-[[ -d "$source_dir" ]] || fail "source directory not found: $source_dir"
+enable_official_kmods() {
+  local feeds="$1/include/feeds.mk"
+  [[ "$(grep -c 'CONFIG_BUILDBOT' "$feeds")" -eq 2 ]] ||
+    fail "official kmods feed rules were not found"
+  sed -i 's/CONFIG_BUILDBOT/CONFIG_ALL_KMODS/g' "$feeds"
+  [[ "$(grep -c 'CONFIG_ALL_KMODS' "$feeds")" -eq 2 ]] ||
+    fail "official kmods feed rules were not updated"
+}
 
-load_firmware_config "$config_file"
-clone_extra_packages "$source_dir" "$packages_file"
-apply_device_config "$source_dir" "$lan_ip" "$password" "$default_theme"
-printf 'FIRMWARE_LAN_IP=%s\nFIRMWARE_PASSWORD=%s\n' "$lan_ip" "$password" >> "$github_env"
+prepare() {
+  local source_dir="$1" config_file="$2" packages_file="$3" github_env="$4"
+  [[ -d "$source_dir" ]] || fail "source directory not found: $source_dir"
+  load_firmware_config "$config_file"
+  clone_extra_packages "$source_dir" "$packages_file"
+  apply_device_config "$source_dir" "$lan_ip" "$password" "$default_theme"
+  [[ "$check_official_abi" == true ]] && enable_official_kmods "$source_dir"
+  printf 'FIRMWARE_LAN_IP=%s\nFIRMWARE_PASSWORD=%s\n' "$lan_ip" "$password" >> "$github_env"
+}
+
+read_built_abi() {
+  local source_dir="$1" vermagic
+  vermagic="$(find "$source_dir"/build_dir/target-* \
+    -path '*/linux-rockchip_armv8/linux-*/.vermagic' -print -quit)"
+  [[ -n "$vermagic" ]] || fail "kernel .vermagic was not found"
+  tr -d '[:space:]' < "$vermagic"
+}
+
+verify_kmods_feed() {
+  local source_dir="$1" kernel_kmods="$2" file
+  while IFS= read -r file; do
+    grep -Fq "/targets/rockchip/armv8/kmods/$kernel_kmods" "$file" && return 0
+  done < <(find "$source_dir/staging_dir" "$source_dir/build_dir" -type f \
+    \( -name distfeeds.conf -o -name distfeeds.list \) -print 2>/dev/null)
+  fail "official kmods repository is missing"
+}
+
+check_abi() {
+  local source_dir="$1" config_file="$2" version="$3" tag="$4" kernel_kmods="$5"
+  local built_abi official_abi="${kernel_kmods##*-}"
+  [[ -d "$source_dir" ]] || fail "source directory not found: $source_dir"
+  load_firmware_config "$config_file"
+  [[ "$check_official_abi" == true ]] || { echo "Official ABI check skipped"; return; }
+  [[ "$kernel_kmods" =~ -[0-9a-f]{32}$ ]] || fail "invalid kmods directory: $kernel_kmods"
+
+  built_abi="$(read_built_abi "$source_dir")"
+  echo "release=$tag"
+  echo "built_abi=$built_abi"
+  echo "official_abi=$official_abi"
+  [[ "$built_abi" == "$official_abi" ]] ||
+    fail "kernel ABI does not match official release $version"
+  verify_kmods_feed "$source_dir" "$kernel_kmods"
+}
+
+case "${1:-}" in
+  prepare)
+    [[ $# -eq 5 ]] || fail "usage: $0 prepare <source-dir> <firmware.conf> <packages.conf> <github-env>"
+    prepare "$2" "$3" "$4" "$5"
+    ;;
+  check-abi)
+    [[ $# -eq 6 ]] || fail "usage: $0 check-abi <source-dir> <firmware.conf> <version> <tag> <kmods-directory>"
+    check_abi "$2" "$3" "$4" "$5" "$6"
+    ;;
+  *) fail "unknown command: ${1:-}" ;;
+esac

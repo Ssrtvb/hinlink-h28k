@@ -65,26 +65,21 @@ jobs:
       - name: 应用构建配置
         working-directory: source
         run: |
-          bash "$GITHUB_WORKSPACE/scripts/build_config.sh" \
+          bash "$GITHUB_WORKSPACE/scripts/build_config.sh" prepare \
             . \
             "$GITHUB_WORKSPACE/config/firmware.conf" \
             "$GITHUB_WORKSPACE/config/packages.conf" \
             "$GITHUB_ENV"
 
-      - name: 生成内核配置
+      - name: 准备内核配置
         working-directory: source
         run: |
-          cp "$GITHUB_WORKSPACE/config/hinlink-h28k.config" .config
-          make defconfig
-
-      - name: 配置官方内核 ABI 和 kmod 源
-        working-directory: source
-        run: |
-          bash "$GITHUB_WORKSPACE/scripts/configure_official_kernel.sh" \
+          bash "$GITHUB_WORKSPACE/scripts/prepare_kernel_config.sh" \
             . \
+            "$GITHUB_WORKSPACE/config/firmware.conf" \
             "${{ steps.release.outputs.version }}" \
             "${{ steps.release.outputs.series }}" \
-            "${{ steps.release.outputs.kernel_kmods }}"
+            "$GITHUB_WORKSPACE/config/hinlink-h28k.config"
 
       - name: 下载源码包
         working-directory: source
@@ -106,6 +101,16 @@ jobs:
             tail -100 build.log
             exit "$code"
           fi
+
+      - name: 校验内核 ABI
+        working-directory: source
+        run: |
+          bash "$GITHUB_WORKSPACE/scripts/build_config.sh" check-abi \
+            . \
+            "$GITHUB_WORKSPACE/config/firmware.conf" \
+            "${{ steps.release.outputs.version }}" \
+            "${{ steps.release.outputs.tag }}" \
+            "${{ steps.release.outputs.kernel_kmods }}"
 
       - name: 检查固件产物
         working-directory: source

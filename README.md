@@ -28,12 +28,13 @@ release_version=24.10
 release_version=24.10.6
 ```
 
-同一文件还控制 LAN 地址、root 密码和默认 LuCI 主题：
+同一文件还控制 LAN 地址、root 密码、默认 LuCI 主题和官方 ABI 校验：
 
 ```ini
 lan_ip=192.168.0.2
 password=your-password
 default_theme=fluent
+check_official_abi=true
 ```
 
 `config/packages.conf` 每行定义一个额外的 `git clone` 软件包；`config/hinlink-h28k.config` 保存目标、软件包和分区配置。
@@ -46,8 +47,8 @@ default_theme=fluent
 | `scripts/config.sh` | 共享配置读取和校验 |
 | `scripts/select_release.sh` | 选择 ImmortalWrt 精确版本或系列最新版 |
 | `scripts/apply_patches.sh` | 应用版本目录中的补丁 |
-| `scripts/configure_official_kernel.sh` | 固定官方 ABI 并写入 kmod 软件源 |
-| `scripts/build_config.sh` | 注入固件参数并克隆额外软件包 |
+| `scripts/prepare_kernel_config.sh` | 提取官方内核配置；24.10 计算 ABI 时排除 RK3528 时钟选项 |
+| `scripts/build_config.sh` | 注入固件参数、启用官方 kmod 源并校验 ABI |
 
 ## 默认组件
 
