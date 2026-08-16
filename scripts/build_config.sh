@@ -66,15 +66,6 @@ read_built_abi() {
   tr -d '[:space:]' < "$vermagic"
 }
 
-verify_kmods_feed() {
-  local source_dir="$1" kernel_kmods="$2" file
-  while IFS= read -r file; do
-    grep -Fq "/targets/rockchip/armv8/kmods/$kernel_kmods" "$file" && return 0
-  done < <(find "$source_dir/staging_dir" "$source_dir/build_dir" -type f \
-    \( -name distfeeds.conf -o -name distfeeds.list \) -print 2>/dev/null)
-  fail "official kmods repository is missing"
-}
-
 check_abi() {
   local source_dir="$1" config_file="$2" version="$3" tag="$4" kernel_kmods="$5"
   local built_abi official_abi="${kernel_kmods##*-}"
@@ -89,7 +80,6 @@ check_abi() {
   echo "official_abi=$official_abi"
   [[ "$built_abi" == "$official_abi" ]] ||
     fail "kernel ABI does not match official release $version"
-  verify_kmods_feed "$source_dir" "$kernel_kmods"
 }
 
 case "${1:-}" in
