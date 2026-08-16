@@ -55,14 +55,11 @@ if [[ -z "$release_tag" ]]; then
   done
   [[ -n "$release_tag" ]] || fail "no usable $release_series release was found"
 fi
-kernel_abi="${kernel_kmods##*-}"
-
 {
   echo "series=$release_series"
   echo "tag=$release_tag"
   echo "version=$release_version"
-  echo "kernel_abi=$kernel_abi"
   echo "kernel_kmods=$kernel_kmods"
 } >> "$github_output"
 
-echo "Selected ImmortalWrt release: $release_tag (ABI $kernel_abi)"
+echo "Selected ImmortalWrt release: $release_tag"
