@@ -13,19 +13,21 @@
 
 补丁只会应用所选版本目录中的 `*.patch` 文件，并按文件名字典序执行。补丁文件名前的编号就是应用顺序。
 
+**已测试版本**: 24.10.5, 24.10.6, 25.12.1
+
 ## 版本配置
 
 编辑 [config/firmware.conf](config/firmware.conf) 中的 `release_version`。填写系列号会自动选择该系列最新正式版：
 
 ```ini
-# 自动选择最新 24.10.x
-release_version=24.10
+# 自动选择最新 25.12.x
+release_version=25.12
 ```
 
 填写完整版本号则固定构建指定版本：
 
 ```ini
-release_version=24.10.6
+release_version=25.12.1
 ```
 
 同一文件还控制 LAN 地址、root 密码、默认 LuCI 主题和官方 ABI 校验：
@@ -65,4 +67,3 @@ check_official_abi=true
 - LAN：`eth0`
 - WAN：`eth1`
 - 固件设备名：`hinlink_h28k`
-- 24.10 引导：U-Boot 2025.10 / TPL v1.11 / BL31 v1.20
