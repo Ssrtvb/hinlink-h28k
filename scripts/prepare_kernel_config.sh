@@ -17,7 +17,6 @@ exclude_rk3528_from_abi() {
 
 source_dir="${1:-}"
 config_file="${2:-}"
-# Keep the selected exact release separate from firmware.conf's version request.
 resolved_release_version="${3:-}"
 release_series="${4:-}"
 device_config="${5:-}"
